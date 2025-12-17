@@ -3,6 +3,7 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Chatbot from './pages/Chatbot';
 import TeachingSection from './pages/TeachingSection';
+import ReflectionJournal from "./pages/ReflectionJournal";
 import Footer from './components/Footer';
 
 export default function App() {
@@ -13,6 +14,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/chatbot" element={<Chatbot />} />
         <Route path="/teaching" element={<TeachingSection />} />
+        <Route path="/journal" element={<ReflectionJournal />} />
       </Routes>
       <Footer />
     </Router>

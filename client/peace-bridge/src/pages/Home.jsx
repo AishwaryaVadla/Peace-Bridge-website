@@ -1,6 +1,4 @@
-import { useState, useEffect } from "react"
-import Chatbot from "../pages/Chatbot"
-import TeachingSection from "../pages/TeachingSection"
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
 export default function Home() {
@@ -21,33 +19,31 @@ export default function Home() {
     "If we have no peace, it is because we have forgotten that we belong to each other. – Mother Teresa",
     "The more we sweat in peace, the less we bleed in war. – Vijaya Lakshmi Pandit",
     "You find peace not by rearranging the circumstances of your life, but by realizing who you are. – Eckhart Tolle",
-  ]
+  ];
 
-  const [quote, setQuote] = useState("")
+  const [quote, setQuote] = useState("");
 
   useEffect(() => {
-  // Set first quote immediately on mount
-  const random = Math.floor(Math.random() * quotes.length);
-  setQuote(quotes[random]);
-
-  // Then set every 5 seconds
-  const interval = setInterval(() => {
     const random = Math.floor(Math.random() * quotes.length);
     setQuote(quotes[random]);
-  }, 5000);
-  return () => clearInterval(interval);
-}, []);
 
+    const interval = setInterval(() => {
+      const random = Math.floor(Math.random() * quotes.length);
+      setQuote(quotes[random]);
+    }, 5000);
 
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <main>
-      {/* Hero / Home Section */}
       <section id="home" className="hero">
         <h1>Welcome to Peace Bridge</h1>
+
         <p style={{ marginBottom: "30px" }}>
-          A digital platform for building harmony, resolving conflicts, and nurturing understanding through
-          guided conversations and teachings.
+          A digital platform for building harmony, resolving conflicts,
+          and nurturing understanding through guided conversations,
+          peaceful practices, and community teachings.
         </p>
 
         <div className="quote-card">
@@ -55,14 +51,15 @@ export default function Home() {
         </div>
 
         <div style={{ marginTop: "40px" }}>
-          <Link to="#chatbot" className="nav-button" style={{ marginRight: "15px" }}>
+          <Link to="/chatbot" className="nav-button" style={{ marginRight: "15px" }}>
             Try the Chatbot
           </Link>
-          <Link to="#teaching" className="nav-button alt">
+
+          <Link to="/teaching" className="nav-button alt">
             Explore Lessons
           </Link>
         </div>
       </section>
     </main>
-  )
+  );
 }
