@@ -1,6 +1,27 @@
 // src/utils/ruleEngine.js
 // Improved: concise, structured, context-aware (still rule-based)
 
+export function detectEmotion(text = "") {
+  const t = text.toLowerCase();
+
+  if (/(argument|fight|coworker|blame|unfair|accused|mistake|they don't understand)/.test(t)) {
+    return {
+      primary_emotion: "frustrated",
+      secondary_emotions: ["angry"],
+      intensity: "medium",
+      safety_level: "normal",
+    };
+  }
+
+  if (t.match(/suicid|kill myself|end it|can't go on/)) return "CRISIS";
+  if (t.match(/anxious|panic|nervous|worried|overwhelmed/)) return "ANXIOUS";
+  if (t.match(/angry|mad|furious|rage/)) return "ANGRY";
+  if (t.match(/sad|depressed|hopeless|cry|lonely/)) return "SAD";
+  if (t.match(/stressed|stress|burnt out|exhausted/)) return "STRESSED";
+
+  return "NEUTRAL";
+}
+
 const CATEGORY_KEYWORDS = {
   interpersonal: ["roommate", "friend", "partner", "argue", "argument", "fight", "yell", "yelled", "angry", "upset"],
   academic: ["group", "project", "professor", "grade", "deadline", "assignment", "class"],
