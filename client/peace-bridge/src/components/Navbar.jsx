@@ -15,6 +15,7 @@ export default function Navbar() {
         <li><Link to="/chatbot" className="hover:text-blue-600">Chatbot</Link></li>
         <li><Link to="/teaching" className="hover:text-blue-600">Teaching</Link></li>
         <li><Link to="/journal" className="hover:text-blue-600">Journal</Link></li>
+        <li><Link to="/blogs" className="hover:text-blue-600">Blogs</Link></li>
         <li><Link to="/about" className="hover:text-blue-600">About</Link></li>
       </ul>
     </nav>

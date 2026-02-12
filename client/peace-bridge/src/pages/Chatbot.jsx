@@ -3,8 +3,6 @@ import "../components/chatbot.css";
 import { detectEmotion } from "../utils/ruleEngine";
 import { sendChat } from "../utils/chatbotAPI";
 
-const API_BASE = "http://localhost:5000"; // hardcoded to avoid env confusion
-
 const greetings = [
   "Hi, I’m Peace Bridge. What’s going on for you today?",
   "Hey there — what’s on your mind right now?",

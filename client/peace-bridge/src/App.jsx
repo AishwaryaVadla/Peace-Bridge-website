@@ -5,6 +5,10 @@ import Chatbot from './pages/Chatbot';
 import TeachingSection from './pages/TeachingSection';
 import ReflectionJournal from "./pages/ReflectionJournal";
 import About from "./pages/About";
+import Blogs from "./pages/Blogs";
+import BlogView from "./pages/BlogView";
+import BlogNew from "./pages/BlogNew";
+import BlogEdit from "./pages/BlogEdit";
 import Footer from './components/Footer';
 
 export default function App() {
@@ -17,6 +21,10 @@ export default function App() {
         <Route path="/teaching" element={<TeachingSection />} />
         <Route path="/journal" element={<ReflectionJournal />} />
         <Route path="/about" element={<About />} />
+        <Route path="/blogs" element={<Blogs />} />
+        <Route path="/blogs/new" element={<BlogNew />} />
+        <Route path="/blogs/:id" element={<BlogView />} />
+        <Route path="/blogs/:id/edit" element={<BlogEdit />} />
       </Routes>
       <Footer />
     </Router>

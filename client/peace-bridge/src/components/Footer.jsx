@@ -1,7 +1,7 @@
 export default function Footer() {
   return (
     <footer className="footer">
-      © 2026 Peace Bridge | University of Kansas - CPACT Lab
+      © 2026 Peace Bridge | Kansas State University - CPACT Lab
     </footer>
   )
 }
