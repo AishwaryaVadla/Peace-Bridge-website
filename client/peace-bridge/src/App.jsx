@@ -9,6 +9,7 @@ import Blogs from "./pages/Blogs";
 import BlogView from "./pages/BlogView";
 import BlogNew from "./pages/BlogNew";
 import BlogEdit from "./pages/BlogEdit";
+import Roleplay from "./pages/Roleplay";
 import Footer from './components/Footer';
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/chatbot" element={<Chatbot />} />
+        <Route path="/roleplay" element={<Roleplay />} />
         <Route path="/teaching" element={<TeachingSection />} />
         <Route path="/journal" element={<ReflectionJournal />} />
         <Route path="/about" element={<About />} />

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
-const API_BASE = "http://localhost:5000"; // hardcoded to avoid env confusion
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const FALLBACK_QUOTES = [
   "Peace begins with a smile. – Mother Teresa",

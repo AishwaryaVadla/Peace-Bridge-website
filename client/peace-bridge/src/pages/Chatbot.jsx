@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import "../components/chatbot.css";
 import { detectEmotion } from "../utils/ruleEngine";
-import { sendChat } from "../utils/chatbotAPI";
+import { sendChat, sendSessionSummary } from "../utils/chatbotAPI";
 
 const greetings = [
   "Hi, I’m Peace Bridge. What’s going on for you today?",
@@ -19,12 +19,21 @@ export default function Chatbot() {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [summary, setSummary] = useState("");
+  const [summaryError, setSummaryError] = useState("");
+  const [autoSummarized, setAutoSummarized] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
   const inFlightRef = useRef(null);
   const bottomRef = useRef(null);
 
   const resetChat = () => {
     setMessages([{ sender: "bot", text: getGreeting(), meta: {} }]);
     setInput("");
+    setSummary("");
+    setSummaryError("");
+    setAutoSummarized(false);
+    setSessionId(null);
   };
 
   useEffect(() => {
@@ -46,12 +55,7 @@ export default function Chatbot() {
     setMessages((prev) => [...prev, userMsg]);
 
     try {
-      const historyForApi = [...messages, userMsg].map((m) => ({
-        role: m.sender === "user" ? "user" : "assistant",
-        content: m.text,
-      }));
-
-      const { text: assistantText, data } = await sendChat(historyForApi);
+      const { text: assistantText, data } = await sendChat(text, sessionId);
 
       const isCurrent = inFlightRef.current === reqId;
 
@@ -93,6 +97,9 @@ export default function Chatbot() {
 
       if (isCurrent) {
         setMessages((p) => [...p, botMsg]);
+        if (data.session_id && data.session_id !== sessionId) {
+          setSessionId(data.session_id);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -112,6 +119,33 @@ export default function Chatbot() {
     }
   };
 
+  const summarize = async () => {
+    if (isSummarizing) return;
+    setSummaryError("");
+    setIsSummarizing(true);
+    try {
+      const historyForApi = messages.map((m) => ({
+        role: m.sender === "user" ? "user" : "assistant",
+        content: m.text,
+      }));
+      const data = await sendSessionSummary(historyForApi, sessionId);
+      setSummary(data.summary);
+    } catch (e) {
+      setSummaryError(e.message || "Could not generate summary");
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+
+  useEffect(() => {
+    const userCount = messages.filter((m) => m.sender === "user").length;
+    if (userCount >= 8 && !autoSummarized && !summary && !isSummarizing) {
+      setAutoSummarized(true);
+      summarize();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
+
   const onKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -127,9 +161,14 @@ export default function Chatbot() {
             <h3>Peace Bridge — Mediation Assistant</h3>
             <p className="muted-small">Rule-based conflict guidance </p>
           </div>
-          <button className="send-btn alt" onClick={resetChat} disabled={isSending}>
-            New Chat
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="send-btn alt" onClick={resetChat} disabled={isSending || isSummarizing}>
+              New Chat
+            </button>
+            <button className="send-btn" onClick={summarize} disabled={isSummarizing || messages.length < 2}>
+              {isSummarizing ? "Summarizing..." : "End Session"}
+            </button>
+          </div>
         </header>
 
         <div className="chat-window">
@@ -172,6 +211,19 @@ export default function Chatbot() {
             <div ref={bottomRef} />
           </div>
         </div>
+
+        {summary && (
+          <div className="card" style={{ marginTop: 16 }}>
+            <h3>Session Summary</h3>
+            <p style={{ whiteSpace: "pre-wrap", marginTop: 8 }}>{summary}</p>
+          </div>
+        )}
+
+        {summaryError && (
+          <div className="alert" style={{ marginTop: 12 }}>
+            {summaryError}
+          </div>
+        )}
 
         <footer className="chat-input-area">
           <textarea

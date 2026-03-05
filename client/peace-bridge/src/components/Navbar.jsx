@@ -13,6 +13,7 @@ export default function Navbar() {
       <ul className="nav-links">
         <li><Link to="/" className="hover:text-blue-600">Home</Link></li>
         <li><Link to="/chatbot" className="hover:text-blue-600">Chatbot</Link></li>
+        <li><Link to="/roleplay" className="hover:text-blue-600">Role-Play</Link></li>
         <li><Link to="/teaching" className="hover:text-blue-600">Teaching</Link></li>
         <li><Link to="/journal" className="hover:text-blue-600">Journal</Link></li>
         <li><Link to="/blogs" className="hover:text-blue-600">Blogs</Link></li>

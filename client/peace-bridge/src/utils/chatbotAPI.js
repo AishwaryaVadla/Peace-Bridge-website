@@ -1,9 +1,14 @@
-export async function sendChat(messages) {
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+export async function sendChat(message, sessionId = null) {
   try {
-    const res = await fetch("http://localhost:5000/api/chat", {
+    const res = await fetch(`${API_BASE}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages }),
+      body: JSON.stringify({
+        session_id: sessionId || null,
+        message: message || "",
+      }),
     });
 
     let data = {};
@@ -31,4 +36,23 @@ export async function sendChat(messages) {
       data: { debug_mode: "CLIENT_FALLBACK" },
     };
   }
+}
+
+export async function sendSessionSummary(messages, sessionId) {
+  const res = await fetch(`${API_BASE}/api/session-summary`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages, session_id: sessionId || null }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(errText || `HTTP ${res.status}`);
+  }
+
+  const data = await res.json();
+  if (!data.summary) {
+    throw new Error("Empty summary");
+  }
+  return data;
 }
