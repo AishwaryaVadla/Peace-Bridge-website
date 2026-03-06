@@ -21,7 +21,14 @@ async function fetchWithTimeout(url, options, timeoutMs = 45000) {
 
 async function claudeChat(messages, opts = {}) {
   const systemParts = messages.filter((m) => m.role === "system").map((m) => m.content);
-  const nonSystem = messages.filter((m) => m.role !== "system");
+  let nonSystem = messages.filter((m) => m.role !== "system");
+
+  // Claude requires messages to start with "user" — drop any leading assistant messages
+  while (nonSystem.length > 0 && nonSystem[0].role !== "user") {
+    nonSystem = nonSystem.slice(1);
+  }
+
+  if (nonSystem.length === 0) throw new Error("No user messages to send to Claude");
 
   const response = await anthropic.messages.create({
     model: CLAUDE_MODEL,
