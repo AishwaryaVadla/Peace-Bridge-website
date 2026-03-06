@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import "../components/chatbot.css";
+import "../components/Chatbot.css";
 import { detectEmotion } from "../utils/ruleEngine";
 import { sendChat, sendSessionSummary } from "../utils/chatbotAPI";
 
