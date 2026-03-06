@@ -4,6 +4,7 @@ WORKDIR /client
 COPY client/peace-bridge/package*.json ./
 RUN npm install
 COPY client/peace-bridge/ ./
+ENV VITE_API_BASE_URL=https://hishamsaif05-peacebridge-space.hf.space
 RUN npm run build -- --base=/
 
 FROM node:20-alpine
