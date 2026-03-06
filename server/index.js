@@ -38,7 +38,7 @@ app.use("/api/roleplay", roleplayRouter);
 app.use("/api/scenarios", scenariosRouter);
 
 // Catch-all: serve frontend for non-API routes
-app.get("*", (req, res) => {
+app.get("/*path", (req, res) => {
   res.sendFile(path.join(distPath, "index.html"));
 });
 
