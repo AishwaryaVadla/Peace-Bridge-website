@@ -1,51 +1,15 @@
 // server/routes/roleplay.js
 import express from "express";
 import { supabase } from "../supabaseClient.js";
+import { chatComplete } from "../llm.js";
 
 const router = express.Router();
-
-const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
-const MODEL = process.env.OLLAMA_MODEL || "llama3.2:3b";
 
 const CRISIS_RE =
   /\b(kill (myself|yourself|himself|herself)|suicide|want to die|end (my|this) life|hurt (myself|yourself)|self.?harm|not worth living)\b/i;
 
 // Memory update trigger — every N turns
 const MEMORY_UPDATE_INTERVAL = 8;
-
-// ── Ollama helper ──────────────────────────────────────────────────────────────
-
-async function fetchWithTimeout(url, options, timeoutMs = 45000) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(id);
-  }
-}
-
-async function ollamaChat(messages, opts = {}) {
-  const payload = {
-    model: MODEL,
-    messages,
-    stream: false,
-    options: {
-      temperature: opts.temperature ?? 0.85,
-      top_p: 0.9,
-      num_ctx: 1024,
-      num_predict: opts.num_predict ?? 160,
-    },
-  };
-  const r = await fetchWithTimeout(
-    `${OLLAMA_URL}/api/chat`,
-    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
-    45000
-  );
-  if (!r.ok) throw new Error(`Ollama ${r.status}`);
-  const data = await r.json();
-  return data?.message?.content?.trim() || "";
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -112,7 +76,7 @@ Return ONLY valid JSON — no explanation, no markdown — in exactly this shape
 }`;
 
   try {
-    const raw = await ollamaChat(
+    const raw = await chatComplete(
       [{ role: "user", content: prompt }],
       { temperature: 0.2, num_predict: 300 }
     );
@@ -191,7 +155,7 @@ Return ONLY valid JSON, no markdown:
 }`;
 
   try {
-    const raw = await ollamaChat(
+    const raw = await chatComplete(
       [{ role: "user", content: prompt }],
       { temperature: 0.2, num_predict: 180 }
     );
@@ -251,7 +215,7 @@ Write a debrief (3–5 sentences) covering:
 Be encouraging and specific. Write in plain paragraphs, no bullet points.`;
 
   try {
-    return await ollamaChat(
+    return await chatComplete(
       [{ role: "user", content: prompt }],
       { temperature: 0.5, num_predict: 250 }
     );
@@ -357,7 +321,7 @@ router.post("/", async (req, res) => {
     const context = buildContext(allMsgs || [], memory);
     const systemPrompt = buildRoleplaySystemPrompt(scenario, emotionalState, memory);
 
-    const reply = await ollamaChat(
+    const reply = await chatComplete(
       [{ role: "system", content: systemPrompt }, ...context, { role: "user", content: userText }]
     ).catch(() => "I didn't quite catch that — could you say that again?");
 

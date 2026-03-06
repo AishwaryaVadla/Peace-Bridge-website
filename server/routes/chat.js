@@ -1,12 +1,9 @@
 // server/routes/chat.js
 import express from "express";
 import { supabase } from "../supabaseClient.js";
+import { chatComplete } from "../llm.js";
 
 const router = express.Router();
-
-const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
-// Default to faster model now that it's pulled; override with OLLAMA_MODEL env if desired.
-const MODEL = process.env.OLLAMA_MODEL || "llama3.2:3b";
 const SUMMARY_PROMPT = `
 You are PeaceBridge, an AI-assisted mediation support system.
 Summarize this mediation conversation into:
@@ -173,22 +170,7 @@ function pickFallback(userText = "", emotion = "unknown") {
   return "I hear you. Let’s slow it down for a second — what part of this is hitting you the hardest right now?";
 }
 
-/**
- * Timeout wrapper so a hung Ollama call doesn't stall your UI.
- */
-async function fetchWithTimeout(url, options, timeoutMs = 45000) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const res = await fetch(url, { ...options, signal: controller.signal });
-    return res;
-  } finally {
-    clearTimeout(id);
-  }
-}
-
-// Simple semaphore to avoid piling requests on Ollama
+// Simple semaphore to avoid piling up concurrent LLM requests
 let locked = false;
 const waiters = [];
 
@@ -214,39 +196,11 @@ async function generateAndStoreSummary(messages, sessionId) {
       .join("\n")
       .slice(-6000);
 
-    const payload = {
-      model: MODEL,
-      messages: [
-        { role: "system", content: SUMMARY_PROMPT },
-        { role: "user", content: convo },
-      ],
-      stream: false,
-      options: {
-        temperature: 0.4,
-        top_p: 0.9,
-        num_ctx: 1024,
-        num_predict: 120,
-      },
-    };
+    const summary = await chatComplete(
+      [{ role: "system", content: SUMMARY_PROMPT }, { role: "user", content: convo }],
+      { temperature: 0.4, num_predict: 120 }
+    ).catch((e) => { console.warn("Auto-summary LLM error:", e.message); return null; });
 
-    const r = await fetchWithTimeout(
-      `${OLLAMA_URL}/api/chat`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      },
-      45000
-    );
-
-    if (!r.ok) {
-      const errText = await r.text().catch(() => "");
-      console.warn("Auto-summary Ollama error:", r.status, errText);
-      return;
-    }
-
-    const data = await r.json();
-    const summary = data?.message?.content?.trim();
     if (!summary) return;
 
     try {
@@ -402,34 +356,13 @@ router.post("/", async (req, res) => {
       { role: "user", content: userText },
     ];
 
-    const payload = {
-      model: MODEL,
-      messages: chatMessages,
-      stream: false,
-      options: {
-        temperature: 0.8,
-        top_p: 0.9,
-        num_ctx: 1024,
-        num_predict: 120,
-      },
-    };
-
-    const t0 = Date.now();
-    const r = await fetchWithTimeout(
-      `${OLLAMA_URL}/api/chat`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      },
-      45000
-    );
-    console.log("Ollama ms:", Date.now() - t0);
-
-    if (!r.ok) {
-      const errText = await r.text();
-      console.error("Ollama error:", r.status, errText);
-
+    let reply = "";
+    try {
+      const t0 = Date.now();
+      reply = await chatComplete(chatMessages, { temperature: 0.8, num_predict: 120 });
+      console.log("LLM ms:", Date.now() - t0);
+    } catch (llmErr) {
+      console.error("LLM error:", llmErr.message);
       return res.json({
         ...DEFAULT_REPLY,
         assistant_message: fallbackText,
@@ -437,13 +370,10 @@ router.post("/", async (req, res) => {
         secondary_emotions: emotion.secondary_emotions,
         intensity: emotion.intensity,
         safety_level: emotion.safety_level,
-        debug_mode: "FALLBACK_USED_OLLAMA_ERROR",
+        debug_mode: "FALLBACK_USED_LLM_ERROR",
         session_id: sessionId,
       });
     }
-
-    const data = await r.json();
-    const reply = data?.message?.content?.trim() || "";
 
     if (!reply) {
       // Even on empty reply, try to persist phase/turns

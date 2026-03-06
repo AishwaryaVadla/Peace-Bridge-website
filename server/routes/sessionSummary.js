@@ -1,10 +1,8 @@
 import express from "express";
 import { supabase } from "../supabaseClient.js";
+import { chatComplete } from "../llm.js";
 
 const router = express.Router();
-
-const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
-const MODEL = process.env.OLLAMA_MODEL || "llama3.2:3b";
 
 const SUMMARY_PROMPT = `
 You are PeaceBridge, an AI-assisted mediation support system.
@@ -14,17 +12,6 @@ Summarize this mediation conversation into:
 - 1 strength shown
 - 1 suggested next step
 Keep it concise (3–6 sentences).`.trim();
-
-async function fetchWithTimeout(url, options, timeoutMs = 45000) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, { ...options, signal: controller.signal });
-    return res;
-  } finally {
-    clearTimeout(id);
-  }
-}
 
 router.post("/", async (req, res) => {
   try {
@@ -37,37 +24,20 @@ router.post("/", async (req, res) => {
       .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
       .join("\n");
 
-    const payload = {
-      model: MODEL,
-      messages: [
-        { role: "system", content: SUMMARY_PROMPT },
-        { role: "user", content: convo.slice(-6000) },
-      ],
-      stream: false,
-      options: {
-        temperature: 0.4,
-        top_p: 0.9,
-        num_ctx: 1024,
-        num_predict: 120,
-      },
-    };
-
     const t0 = Date.now();
-    const r = await fetchWithTimeout(`${OLLAMA_URL}/api/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    console.log("Ollama summary ms:", Date.now() - t0);
-
-    if (!r.ok) {
-      const errText = await r.text();
-      console.error("Ollama summary error:", r.status, errText);
+    let summary;
+    try {
+      summary = await chatComplete(
+        [{ role: "system", content: SUMMARY_PROMPT }, { role: "user", content: convo.slice(-6000) }],
+        { temperature: 0.4, num_predict: 120 }
+      );
+      console.log("LLM summary ms:", Date.now() - t0);
+    } catch (llmErr) {
+      console.error("LLM summary error:", llmErr.message);
       return res.json({ summary: "I wasn’t able to generate a summary just now.", debug_mode: "FALLBACK_USED" });
     }
 
-    const data = await r.json();
-    const summary = data?.message?.content?.trim() || "I wasn’t able to generate a summary just now.";
+    summary = summary || "I wasn’t able to generate a summary just now.";
 
     // optional store in Supabase
     try {
