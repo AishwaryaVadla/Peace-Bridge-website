@@ -24,6 +24,10 @@ app.use(
 app.use(express.json());
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
+// Serve built frontend if present (HF Space)
+const distPath = path.join(process.cwd(), "public");
+app.use(express.static(distPath));
+
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
 app.use("/api/chat", chatRouter);
@@ -32,6 +36,11 @@ app.use("/api/session-summary", sessionSummaryRouter);
 app.use("/api/quote", quoteRouter);
 app.use("/api/roleplay", roleplayRouter);
 app.use("/api/scenarios", scenariosRouter);
+
+// Catch-all: serve frontend for non-API routes
+app.get("*", (req, res) => {
+  res.sendFile(path.join(distPath, "index.html"));
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
