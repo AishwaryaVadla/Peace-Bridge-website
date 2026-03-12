@@ -11,11 +11,13 @@ import BlogNew from "./pages/BlogNew";
 import BlogEdit from "./pages/BlogEdit";
 import Roleplay from "./pages/Roleplay";
 import Footer from './components/Footer';
+import AIDisclaimer from './components/AIDisclaimer';
 
 export default function App() {
   return (
     <Router>
       <Navbar />
+      <AIDisclaimer />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/chatbot" element={<Chatbot />} />
