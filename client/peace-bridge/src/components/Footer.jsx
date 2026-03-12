@@ -14,7 +14,7 @@ export default function Footer() {
         simulator. It does not provide professional legal, mediation, or mental health advice. If you
         are in crisis, call or text <strong>988</strong> (Suicide &amp; Crisis Lifeline).
       </div>
-      <div style={{ padding: "12px 20px", textAlign: "center" }}>
+      <div style={{ padding: "14px 20px", textAlign: "center", lineHeight: 1.8 }}>
         © 2026 Peace Bridge | Kansas State University - CPACT Lab
       </div>
     </footer>
