@@ -11,7 +11,6 @@ import BlogNew from "./pages/BlogNew";
 import BlogEdit from "./pages/BlogEdit";
 import Roleplay from "./pages/Roleplay";
 import Footer from './components/Footer';
-import AIDisclaimer from './components/AIDisclaimer';
 
 export default function App() {
   return (
@@ -29,7 +28,6 @@ export default function App() {
         <Route path="/blogs/:id" element={<BlogView />} />
         <Route path="/blogs/:id/edit" element={<BlogEdit />} />
       </Routes>
-      <AIDisclaimer />
       <Footer />
     </Router>
   );
