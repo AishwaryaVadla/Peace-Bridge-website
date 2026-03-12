@@ -291,11 +291,14 @@ export default function Chatbot() {
               placeholder="Describe your situation..."
               rows={1}
               className="chat-input"
+              aria-label="Type your mediation message"
             />
             {SpeechRecognitionAPI && (
               <button
                 onClick={toggleMic}
                 disabled={isSending}
+                aria-label={isListening ? "Stop voice recording" : "Start voice recording"}
+                aria-pressed={isListening}
                 title={isListening ? "Stop listening" : "Speak your message"}
                 style={{
                   padding: "0 12px",
@@ -317,7 +320,7 @@ export default function Chatbot() {
                 {isListening ? <>⏹ Stop</> : <>🎤</>}
               </button>
             )}
-            <button className="send-btn" onClick={send} disabled={isSending}>Send</button>
+            <button className="send-btn" onClick={send} disabled={isSending} aria-label="Send message">Send</button>
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
             {isListening ? (

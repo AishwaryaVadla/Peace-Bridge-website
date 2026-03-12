@@ -614,11 +614,14 @@ export default function Roleplay() {
               rows={1}
               className="chat-input"
               disabled={!!crisis || !!debrief}
+              aria-label="Type your response to the scenario"
             />
             {SpeechRecognitionAPI && (
               <button
                 onClick={toggleMic}
                 disabled={!!crisis || !!debrief}
+                aria-label={isListening ? "Stop voice recording" : "Start voice recording"}
+                aria-pressed={isListening}
                 title={isListening ? "Stop listening" : "Speak your response"}
                 style={{
                   padding: "0 12px",
@@ -644,6 +647,7 @@ export default function Roleplay() {
               className="send-btn"
               onClick={send}
               disabled={isTyping || !!crisis || !!debrief}
+              aria-label="Send response"
             >
               Send
             </button>

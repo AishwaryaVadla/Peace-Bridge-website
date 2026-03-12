@@ -1,7 +1,16 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import logo from "../../cpact_lab_logo.jpg";
 
 export default function Navbar() {
+  const [highContrast, setHighContrast] = useState(false);
+
+  const toggleContrast = () => {
+    const next = !highContrast;
+    setHighContrast(next);
+    document.body.classList.toggle("high-contrast", next);
+  };
+
   return (
     <nav className="navbar">
       <div>
@@ -11,14 +20,34 @@ export default function Navbar() {
         </div>
       </div>
       <ul className="nav-links">
-        <li><Link to="/" className="hover:text-blue-600">Home</Link></li>
-        <li><Link to="/chatbot" className="hover:text-blue-600">Chatbot</Link></li>
-        <li><Link to="/roleplay" className="hover:text-blue-600">Role-Play</Link></li>
-        <li><Link to="/teaching" className="hover:text-blue-600">Teaching</Link></li>
-        <li><Link to="/journal" className="hover:text-blue-600">Journal</Link></li>
-        <li><Link to="/blogs" className="hover:text-blue-600">Blogs</Link></li>
-        <li><Link to="/about" className="hover:text-blue-600">About</Link></li>
+        <li><Link to="/">Home</Link></li>
+        <li><Link to="/chatbot">Chatbot</Link></li>
+        <li><Link to="/roleplay">Role-Play</Link></li>
+        <li><Link to="/teaching">Teaching</Link></li>
+        <li><Link to="/journal">Journal</Link></li>
+        <li><Link to="/blogs">Blogs</Link></li>
+        <li><Link to="/about">About</Link></li>
+        <li>
+          <button
+            onClick={toggleContrast}
+            aria-pressed={highContrast}
+            aria-label="Toggle high contrast mode"
+            title="Toggle high contrast mode"
+            style={{
+              background: highContrast ? "#ff0" : "transparent",
+              color: highContrast ? "#000" : "#555",
+              border: "1px solid currentColor",
+              borderRadius: 6,
+              padding: "4px 10px",
+              cursor: "pointer",
+              fontSize: "0.8rem",
+              fontWeight: 600,
+            }}
+          >
+            ◑ Contrast
+          </button>
+        </li>
       </ul>
     </nav>
-  )
+  );
 }

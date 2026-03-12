@@ -829,3 +829,77 @@ body,
     max-height: 220px;
   }
 }
+/* =======================================
+   HIGH CONTRAST MODE
+======================================= */
+body.high-contrast,
+body.high-contrast .navbar,
+body.high-contrast .card,
+body.high-contrast .chatcard,
+body.high-contrast .chatpage,
+body.high-contrast .bubble-bot,
+body.high-contrast .bubble-user,
+body.high-contrast .reflection-main,
+body.high-contrast .reflection-sidebar,
+body.high-contrast .teaching-card,
+body.high-contrast .quote-card,
+body.high-contrast .about {
+  background: #000 !important;
+  color: #fff !important;
+}
+
+body.high-contrast .navbar {
+  background: #111 !important;
+  border-bottom: 2px solid #ff0 !important;
+  box-shadow: none !important;
+}
+
+body.high-contrast .navbar h1,
+body.high-contrast .nav-links a {
+  color: #ff0 !important;
+}
+
+body.high-contrast .bubble-bot {
+  background: #1a1a1a !important;
+  border: 1px solid #ff0 !important;
+  color: #fff !important;
+}
+
+body.high-contrast .bubble-user {
+  background: #003399 !important;
+  color: #fff !important;
+}
+
+body.high-contrast .send-btn,
+body.high-contrast button.send-btn {
+  background: #ff0 !important;
+  color: #000 !important;
+  border: 2px solid #ff0 !important;
+}
+
+body.high-contrast .chat-input,
+body.high-contrast .reflection-input,
+body.high-contrast textarea {
+  background: #111 !important;
+  color: #fff !important;
+  border: 1px solid #ff0 !important;
+}
+
+body.high-contrast .footer,
+body.high-contrast .chat-header {
+  background: #111 !important;
+  color: #fff !important;
+  border-color: #ff0 !important;
+}
+
+body.high-contrast .tag,
+body.high-contrast .emotion-chip {
+  background: #330 !important;
+  color: #ff0 !important;
+}
+
+body.high-contrast .subtle,
+body.high-contrast .muted-small,
+body.high-contrast p {
+  color: #ccc !important;
+}
