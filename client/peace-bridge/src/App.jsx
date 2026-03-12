@@ -17,7 +17,6 @@ export default function App() {
   return (
     <Router>
       <Navbar />
-      <AIDisclaimer />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/chatbot" element={<Chatbot />} />
@@ -30,6 +29,7 @@ export default function App() {
         <Route path="/blogs/:id" element={<BlogView />} />
         <Route path="/blogs/:id/edit" element={<BlogEdit />} />
       </Routes>
+      <AIDisclaimer />
       <Footer />
     </Router>
   );
