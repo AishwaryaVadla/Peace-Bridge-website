@@ -103,6 +103,9 @@ export default function Roleplay() {
   const [scenarioError, setScenarioError] = useState("");
 
   const [selectedScenario, setSelectedScenario] = useState(null);
+  const [pendingScenario, setPendingScenario] = useState(null); // setup screen
+  const [customContext, setCustomContext] = useState("");
+  const [activeDifficulty, setActiveDifficulty] = useState(null);
   const [sessionId, setSessionId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -132,20 +135,51 @@ export default function Roleplay() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping, debrief]);
 
-  const pickScenario = async (scenario) => {
+  const CONTEXT_PLACEHOLDER = {
+    Workplace: `e.g. "My manager called me out in front of the whole team during yesterday's standup for missing a deadline, but I was never given the full requirements…"`,
+    Neighbors: `e.g. "My upstairs neighbor has been moving furniture and playing music past midnight for the past two weeks and it's affecting my sleep…"`,
+    Family: `e.g. "Every Thanksgiving my sister insists we go to her in-laws even though we've never once celebrated at our parents' house…"`,
+    Business: `e.g. "I paid for a premium service package and three weeks later nothing has been delivered, and my calls keep getting ignored…"`,
+    Education: `e.g. "My daughter came home upset after her teacher told her in front of the class that her essay was 'below the standard expected'…"`,
+    Sport: `e.g. "I've been training six days a week all season but I'm still being benched while players who joined later are getting more court time…"`,
+    "High-Tech": `e.g. "My co-founder wants to ship next week even though we haven't done any QA and I've flagged three critical bugs in the auth flow…"`,
+    Elderly: `e.g. "My brother thinks our dad is fine living alone but last week he forgot to take his medication for three days and didn't tell anyone…"`,
+    Couple: `e.g. "We keep arguing about finances — I feel like I'm always the one tracking the budget while my partner makes purchases without discussing them…"`,
+    "Tenant-Landlord": `e.g. "My landlord has been ignoring my messages about a broken heater for a month and winter is starting…"`,
+    Community: `e.g. "The neighborhood association voted to change the park hours without consulting residents who actually use it in the evenings…"`,
+    Defamation: `e.g. "A former colleague has been telling people at industry events that I was let go for misconduct, which is completely untrue…"`,
+    Intergenerational: `e.g. "My parents keep making major decisions about the family business without including me, even though I've been working there for five years…"`,
+  };
+
+  const getPlaceholder = (scenario) =>
+    CONTEXT_PLACEHOLDER[scenario?.category] ||
+    `e.g. "Describe your specific situation here — the AI character will tailor the conversation to your context…"`;
+
+  // Step 1: click card → show setup screen
+  const pickScenario = (scenario) => {
+    setStartError("");
+    setCustomContext("");
+    setPendingScenario(scenario);
+  };
+
+  // Step 2: confirm on setup screen → actually start
+  const confirmStart = async () => {
+    const scenario = pendingScenario;
     setStartError("");
     setSelectedScenario(scenario);
+    setPendingScenario(null);
     setMessages([]);
     setInput("");
     setCrisis(false);
     setDebrief(null);
     try {
-      const data = await startRoleplay(scenario.id);
+      const data = await startRoleplay(scenario.id, customContext.trim());
       setSessionId(data.session_id);
       setMessages([{ sender: "bot", text: data.reply }]);
     } catch (e) {
       setStartError(e.message || "Failed to start the scenario. Please try again.");
       setSelectedScenario(null);
+      setPendingScenario(scenario); // go back to setup on error
     }
   };
 
@@ -201,6 +235,9 @@ export default function Roleplay() {
 
   const reset = () => {
     setSelectedScenario(null);
+    setPendingScenario(null);
+    setCustomContext("");
+    setActiveDifficulty(null);
     setSessionId(null);
     setMessages([]);
     setInput("");
@@ -212,8 +249,84 @@ export default function Roleplay() {
     setEnding(false);
   };
 
+  // ── Setup screen (between picker and chat) ───────────────────────────────────
+  if (pendingScenario) {
+    return (
+      <div className="page">
+        <div className="pageHeader">
+          <div>
+            <h1>🎭 {pendingScenario.title}</h1>
+            <p className="subtle">Set up your scenario before starting.</p>
+          </div>
+        </div>
+
+        {startError && <div className="alert">{startError}</div>}
+
+        <div className="card" style={{ maxWidth: 640, margin: "24px auto", padding: "28px 32px" }}>
+          {/* Scenario default context */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ fontWeight: 600, color: "#1a237e" }}>Default scenario</span>
+              {pendingScenario.difficulty && (
+                <span
+                  className="tag"
+                  style={{
+                    background: DIFFICULTY_COLOR[pendingScenario.difficulty] + "22",
+                    color: DIFFICULTY_COLOR[pendingScenario.difficulty],
+                  }}
+                >
+                  {pendingScenario.difficulty}
+                </span>
+              )}
+            </div>
+            <p className="subtle" style={{ margin: 0, fontSize: "0.95rem", lineHeight: 1.6 }}>
+              {pendingScenario.context}
+            </p>
+          </div>
+
+          {/* Custom context input */}
+          <div style={{ marginBottom: 24 }}>
+            <label style={{ display: "block", fontWeight: 600, color: "#333", marginBottom: 8 }}>
+              Your specific situation <span style={{ fontWeight: 400, color: "#888" }}>(optional)</span>
+            </label>
+            <p className="subtle" style={{ margin: "0 0 10px", fontSize: "0.88rem" }}>
+              Describe your real or custom scenario. The AI character will respond to your specific context instead of the default setup.
+            </p>
+            <textarea
+              value={customContext}
+              onChange={(e) => setCustomContext(e.target.value)}
+              placeholder={getPlaceholder(pendingScenario)}
+              rows={4}
+              className="chat-input"
+              style={{ width: "100%", resize: "vertical", fontSize: "0.95rem" }}
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+            <button
+              className="send-btn"
+              style={{ background: "white", color: "#3f51b5", border: "1px solid #3f51b5" }}
+              onClick={() => { setPendingScenario(null); setStartError(""); }}
+            >
+              ← Back
+            </button>
+            <button className="send-btn" onClick={confirmStart}>
+              {customContext.trim() ? "Start with my context" : "Start with default context"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── Scenario picker ──────────────────────────────────────────────────────────
   if (!selectedScenario) {
+    const DIFFICULTIES = ["All", "beginner", "intermediate", "advanced"];
+
+    const filtered = scenarios.filter((s) =>
+      !activeDifficulty || activeDifficulty === "All" ? true : s.difficulty === activeDifficulty
+    );
+
     return (
       <div className="page">
         <div className="pageHeader">
@@ -223,7 +336,40 @@ export default function Roleplay() {
           </div>
         </div>
 
-        {startError && <div className="alert">{startError}</div>}
+        {/* Difficulty filter */}
+        <div style={{ marginTop: 24 }}>
+          <p style={{ margin: "0 0 10px", color: "#666", fontSize: "0.88rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Filter by difficulty
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {DIFFICULTIES.map((d) => {
+              const isActive = d === "All" ? !activeDifficulty : activeDifficulty === d;
+              const color = d === "All" ? "#1a237e" : DIFFICULTY_COLOR[d] || "#1a237e";
+              return (
+                <button
+                  key={d}
+                  onClick={() => setActiveDifficulty(d === "All" ? null : d)}
+                  style={{
+                    padding: "7px 18px",
+                    borderRadius: 20,
+                    border: `1px solid ${color}`,
+                    cursor: "pointer",
+                    fontSize: "0.88rem",
+                    fontWeight: isActive ? 600 : 400,
+                    background: isActive ? color : "white",
+                    color: isActive ? "white" : color,
+                    transition: "all 0.15s",
+                    textTransform: d === "All" ? "none" : "capitalize",
+                  }}
+                >
+                  {d === "All" ? "All scenarios" : d}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {startError && <div className="alert" style={{ marginTop: 16 }}>{startError}</div>}
 
         {loadingScenarios ? (
           <p className="subtle" style={{ marginTop: 24 }}>Loading scenarios…</p>
@@ -237,33 +383,51 @@ export default function Roleplay() {
             </p>
           </div>
         ) : (
-          <div className="cardList" style={{ marginTop: 24 }}>
-            {scenarios.map((s) => (
-              <button
-                key={s.id}
-                className="card"
-                style={{ cursor: "pointer", textAlign: "left", border: "none", width: "100%", background: "white" }}
-                onClick={() => pickScenario(s)}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                  <h3 style={{ margin: 0, color: "#1a237e" }}>{s.title}</h3>
-                  {s.difficulty && (
-                    <span
-                      className="tag"
-                      style={{
-                        background: DIFFICULTY_COLOR[s.difficulty] + "22",
-                        color: DIFFICULTY_COLOR[s.difficulty],
-                        flexShrink: 0,
-                      }}
-                    >
-                      {s.difficulty}
-                    </span>
+          <>
+            {/* Scenario cards */}
+            {filtered.length === 0 && (
+              <p className="subtle" style={{ marginTop: 24, textAlign: "center" }}>
+                No scenarios found for this filter.
+              </p>
+            )}
+            <div className="cardList" style={{ marginTop: 16 }}>
+              {filtered.map((s) => (
+                <button
+                  key={s.id}
+                  className="card"
+                  style={{ cursor: "pointer", textAlign: "left", border: "none", width: "100%", background: "white" }}
+                  onClick={() => pickScenario(s)}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <h3 style={{ margin: 0, color: "#1a237e" }}>{s.title}</h3>
+                      {s.category && (
+                        <span className="tag" style={{ background: "#e8eaf6", color: "#3f51b5" }}>{s.category}</span>
+                      )}
+                    </div>
+                    {s.difficulty && (
+                      <span
+                        className="tag"
+                        style={{
+                          background: DIFFICULTY_COLOR[s.difficulty] + "22",
+                          color: DIFFICULTY_COLOR[s.difficulty],
+                          flexShrink: 0,
+                        }}
+                      >
+                        {s.difficulty}
+                      </span>
+                    )}
+                  </div>
+                  <p className="subtle" style={{ marginTop: 8, fontSize: "0.95rem" }}>{s.context}</p>
+                  {s.learning_goal && (
+                    <p style={{ marginTop: 6, fontSize: "0.85rem", color: "#5c6bc0" }}>
+                      🎯 {s.learning_goal}
+                    </p>
                   )}
-                </div>
-                <p className="subtle" style={{ marginTop: 10, fontSize: "0.95rem" }}>{s.context}</p>
-              </button>
-            ))}
-          </div>
+                </button>
+              ))}
+            </div>
+          </>
         )}
       </div>
     );

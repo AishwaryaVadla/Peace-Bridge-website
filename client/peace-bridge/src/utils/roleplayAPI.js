@@ -15,11 +15,11 @@ export async function getScenarios() {
   return res.json();
 }
 
-export async function startRoleplay(scenarioId) {
+export async function startRoleplay(scenarioId, customContext = "") {
   const res = await fetch(`${API_BASE}/api/roleplay/start`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ scenario_id: scenarioId }),
+    body: JSON.stringify({ scenario_id: scenarioId, custom_context: customContext || "" }),
   });
   if (!res.ok) {
     let detail = "";

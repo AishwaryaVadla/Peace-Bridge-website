@@ -8,6 +8,7 @@ import sessionSummaryRouter from "./routes/sessionSummary.js";
 import quoteRouter from "./routes/quote.js";
 import roleplayRouter from "./routes/roleplay.js";
 import scenariosRouter from "./routes/scenarios.js";
+import journalRouter from "./routes/journal.js";
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.use("/api/session-summary", sessionSummaryRouter);
 app.use("/api/quote", quoteRouter);
 app.use("/api/roleplay", roleplayRouter);
 app.use("/api/scenarios", scenariosRouter);
+app.use("/api/journal", journalRouter);
 
 // Catch-all: serve frontend for non-API routes
 app.get("/*path", (req, res) => {

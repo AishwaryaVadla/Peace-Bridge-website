@@ -37,7 +37,11 @@ function buildRoleplaySystemPrompt(scenario, emotionalState, memory) {
       }`
     : "";
 
-  return `${scenario.system_prompt}
+  const customContextBlock = memory?.custom_context
+    ? `\nUser's specific situation: "${memory.custom_context}" — keep this in mind throughout.`
+    : "";
+
+  return `${scenario.system_prompt}${customContextBlock}
 
 Emotional tone guidance (do not break character — use this to inform your delivery):
 ${toneGuidance[emotionalState]}${escalationGuidance}
@@ -85,10 +89,14 @@ Return ONLY valid JSON — no explanation, no markdown — in exactly this shape
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return;
 
-    const memory = JSON.parse(jsonMatch[0]);
+    const newMemory = JSON.parse(jsonMatch[0]);
+    // Preserve custom_context set at session start
+    if (existingMemory?.custom_context) {
+      newMemory.custom_context = existingMemory.custom_context;
+    }
     await supabase
       .from("sessions")
-      .update({ roleplay_memory: memory })
+      .update({ roleplay_memory: newMemory })
       .eq("id", sessionId);
   } catch {
     // Non-fatal — silently skip if Ollama or parse fails
@@ -234,7 +242,7 @@ Be encouraging and specific. Write in plain paragraphs, no bullet points.`;
 // POST /api/roleplay/start
 router.post("/start", async (req, res) => {
   try {
-    const { scenario_id } = req.body || {};
+    const { scenario_id, custom_context } = req.body || {};
     if (!scenario_id) return res.status(400).json({ error: "scenario_id is required" });
 
     const { data: scenario, error: scErr } = await supabase
@@ -245,9 +253,32 @@ router.post("/start", async (req, res) => {
 
     if (scErr || !scenario) return res.status(404).json({ error: "Scenario not found" });
 
+    const hasCustomContext = custom_context && custom_context.trim().length > 0;
+
+    // If custom context provided, generate a personalized opener via LLM
+    let starterMessage = scenario.starter_message;
+    if (hasCustomContext) {
+      try {
+        const prompt = `${scenario.system_prompt}
+
+The user has provided this specific situation context: "${custom_context.trim()}"
+
+Open the conversation as your character would, addressing the user's specific situation directly. Keep it to 2-3 sentences, stay fully in character.`;
+        starterMessage = await chatComplete([{ role: "user", content: prompt }], { temperature: 0.8 });
+      } catch {
+        // Fall back to default starter if LLM fails
+        starterMessage = scenario.starter_message;
+      }
+    }
+
+    // Store custom_context in roleplay_memory so all future turns are aware of it
+    const initialMemory = hasCustomContext
+      ? { custom_context: custom_context.trim() }
+      : null;
+
     const { data: session, error: sessErr } = await supabase
       .from("sessions")
-      .insert({ mode: "roleplay", scenario_id, turn_count: 0, roleplay_memory: null })
+      .insert({ mode: "roleplay", scenario_id, turn_count: 0, roleplay_memory: initialMemory })
       .select()
       .single();
 
@@ -256,10 +287,10 @@ router.post("/start", async (req, res) => {
     await supabase.from("session_messages").insert({
       session_id: session.id,
       role: "assistant",
-      content: scenario.starter_message,
+      content: starterMessage,
     });
 
-    return res.json({ session_id: session.id, reply: scenario.starter_message });
+    return res.json({ session_id: session.id, reply: starterMessage });
   } catch (err) {
     console.error("Roleplay /start error:", err);
     return res.status(500).json({ error: "Internal server error" });

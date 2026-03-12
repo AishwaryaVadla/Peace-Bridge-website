@@ -37,7 +37,9 @@ export default function Chatbot() {
   };
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length > 1 || isTyping) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages, isTyping]);
 
   const send = async () => {
