@@ -613,19 +613,23 @@ export default function Roleplay() {
                 disabled={!!crisis || !!debrief}
                 title={isListening ? "Stop listening" : "Speak your response"}
                 style={{
-                  padding: "0 14px",
+                  padding: "0 12px",
                   height: 40,
                   borderRadius: 8,
                   border: `1px solid ${isListening ? "#f44336" : "#3f51b5"}`,
-                  background: isListening ? "#ffebee" : "white",
-                  color: isListening ? "#f44336" : "#3f51b5",
+                  background: isListening ? "#f44336" : "white",
+                  color: isListening ? "white" : "#3f51b5",
                   cursor: "pointer",
-                  fontSize: "1.1rem",
+                  fontSize: isListening ? "0.78rem" : "1.1rem",
+                  fontWeight: 600,
                   flexShrink: 0,
-                  animation: isListening ? "pulse 1.2s infinite" : "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  whiteSpace: "nowrap",
                 }}
               >
-                🎤
+                {isListening ? <>⏹ Stop</> : <>🎤</>}
               </button>
             )}
             <button

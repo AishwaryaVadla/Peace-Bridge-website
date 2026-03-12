@@ -290,18 +290,23 @@ export default function Chatbot() {
                 disabled={isSending}
                 title={isListening ? "Stop listening" : "Speak your message"}
                 style={{
-                  padding: "0 14px",
+                  padding: "0 12px",
                   height: 40,
                   borderRadius: 8,
                   border: `1px solid ${isListening ? "#f44336" : "#3f51b5"}`,
-                  background: isListening ? "#ffebee" : "white",
-                  color: isListening ? "#f44336" : "#3f51b5",
+                  background: isListening ? "#f44336" : "white",
+                  color: isListening ? "white" : "#3f51b5",
                   cursor: "pointer",
-                  fontSize: "1.1rem",
+                  fontSize: isListening ? "0.78rem" : "1.1rem",
+                  fontWeight: 600,
                   flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  whiteSpace: "nowrap",
                 }}
               >
-                🎤
+                {isListening ? <>⏹ Stop</> : <>🎤</>}
               </button>
             )}
             <button className="send-btn" onClick={send} disabled={isSending}>Send</button>
