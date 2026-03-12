@@ -75,11 +75,14 @@ export default function Chatbot() {
 
     const rec = new SpeechRecognitionAPI();
     rec.lang = "en-US";
-    rec.continuous = false;
+    rec.continuous = true;
     rec.interimResults = false;
     rec.onresult = (e) => {
-      const transcript = e.results[0][0].transcript;
-      setInput((prev) => (prev ? prev + " " + transcript : transcript));
+      let newText = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) newText += e.results[i][0].transcript + " ";
+      }
+      if (newText) setInput((prev) => (prev ? prev + newText : newText));
     };
     rec.onend = () => setIsListening(false);
     rec.onerror = () => setIsListening(false);
