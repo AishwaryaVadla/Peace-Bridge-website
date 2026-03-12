@@ -44,6 +44,7 @@ export default function Chatbot() {
   const [sessionId, setSessionId] = useState(null);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [micError, setMicError] = useState("");
   const inFlightRef = useRef(null);
   const recognitionRef = useRef(null);
   const bottomRef = useRef(null);
@@ -85,9 +86,13 @@ export default function Chatbot() {
       if (newText) setInput((prev) => (prev ? prev + newText : newText));
     };
     rec.onend = () => setIsListening(false);
-    rec.onerror = () => setIsListening(false);
+    rec.onerror = (e) => {
+      setIsListening(false);
+      if (e.error === "not-allowed") setMicError("Microphone access was blocked. Please allow mic access in your browser and try again.");
+    };
     recognitionRef.current = rec;
     rec.start();
+    setMicError("");
     setIsListening(true);
   };
 
@@ -314,7 +319,17 @@ export default function Chatbot() {
             )}
             <button className="send-btn" onClick={send} disabled={isSending}>Send</button>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, alignSelf: "flex-end" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            {isListening ? (
+              <span style={{ fontSize: "0.8rem", color: "#f44336", display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f44336", display: "inline-block", animation: "pulse 1s infinite" }} />
+                Listening…
+              </span>
+            ) : micError ? (
+              <span style={{ fontSize: "0.8rem", color: "#c62828" }}>⚠️ {micError}</span>
+            ) : (
+              <span />
+            )}
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.82rem", color: "#666", cursor: "pointer", userSelect: "none" }}>
               <input
                 type="checkbox"
