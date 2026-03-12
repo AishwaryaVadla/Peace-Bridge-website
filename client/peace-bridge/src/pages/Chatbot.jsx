@@ -1,12 +1,30 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "../components/Chatbot.css";
 import { detectEmotion } from "../utils/ruleEngine";
 import { sendChat, sendSessionSummary } from "../utils/chatbotAPI";
 
+// ── Voice helpers ─────────────────────────────────────────────────────────────
+const SpeechRecognitionAPI =
+  typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
+
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = "en-US";
+  utt.rate = 1;
+  utt.pitch = 1;
+  window.speechSynthesis.speak(utt);
+}
+
+function stopSpeaking() {
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+}
+
 const greetings = [
-  "Hi, I’m Peace Bridge. What’s going on for you today?",
-  "Hey there — what’s on your mind right now?",
-  "I’m here with you. What’s happening today?",
+  "Hi, I'm Peace Bridge. What's going on for you today?",
+  "Hey there — what's on your mind right now?",
+  "I'm here with you. What's happening today?",
   "Welcome back. What would you like to talk about?",
 ];
 
@@ -24,10 +42,14 @@ export default function Chatbot() {
   const [summaryError, setSummaryError] = useState("");
   const [autoSummarized, setAutoSummarized] = useState(false);
   const [sessionId, setSessionId] = useState(null);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const inFlightRef = useRef(null);
+  const recognitionRef = useRef(null);
   const bottomRef = useRef(null);
 
   const resetChat = () => {
+    stopSpeaking();
     setMessages([{ sender: "bot", text: getGreeting(), meta: {} }]);
     setInput("");
     setSummary("");
@@ -42,11 +64,36 @@ export default function Chatbot() {
     }
   }, [messages, isTyping]);
 
+  const toggleMic = () => {
+    if (!SpeechRecognitionAPI) return;
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const rec = new SpeechRecognitionAPI();
+    rec.lang = "en-US";
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      setInput((prev) => (prev ? prev + " " + transcript : transcript));
+    };
+    rec.onend = () => setIsListening(false);
+    rec.onerror = () => setIsListening(false);
+    recognitionRef.current = rec;
+    rec.start();
+    setIsListening(true);
+  };
+
   const send = async () => {
     if (isSending) return;
     const text = input.trim();
     if (!text) return;
 
+    stopSpeaking();
     const userMsg = { sender: "user", text, meta: {} };
     const reqId = Date.now();
     inFlightRef.current = reqId;
@@ -99,13 +146,13 @@ export default function Chatbot() {
 
       if (isCurrent) {
         setMessages((p) => [...p, botMsg]);
+        if (voiceEnabled && bubbleText) speak(bubbleText);
         if (data.session_id && data.session_id !== sessionId) {
           setSessionId(data.session_id);
         }
       }
     } catch (e) {
       console.error(e);
-      // Only append one fallback per request
       if (inFlightRef.current === reqId) {
         setMessages((p) => [
           ...p,
@@ -227,16 +274,52 @@ export default function Chatbot() {
           </div>
         )}
 
-        <footer className="chat-input-area">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder="Describe your situation..."
-            rows={1}
-            className="chat-input"
-          />
-          <button className="send-btn" onClick={send} disabled={isSending}>Send</button>
+        <footer className="chat-input-area" style={{ flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, width: "100%", alignItems: "flex-end" }}>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKeyDown}
+              placeholder="Describe your situation..."
+              rows={1}
+              className="chat-input"
+            />
+            {SpeechRecognitionAPI && (
+              <button
+                onClick={toggleMic}
+                disabled={isSending}
+                title={isListening ? "Stop listening" : "Speak your message"}
+                style={{
+                  padding: "0 14px",
+                  height: 40,
+                  borderRadius: 8,
+                  border: `1px solid ${isListening ? "#f44336" : "#3f51b5"}`,
+                  background: isListening ? "#ffebee" : "white",
+                  color: isListening ? "#f44336" : "#3f51b5",
+                  cursor: "pointer",
+                  fontSize: "1.1rem",
+                  flexShrink: 0,
+                }}
+              >
+                🎤
+              </button>
+            )}
+            <button className="send-btn" onClick={send} disabled={isSending}>Send</button>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, alignSelf: "flex-end" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.82rem", color: "#666", cursor: "pointer", userSelect: "none" }}>
+              <input
+                type="checkbox"
+                checked={voiceEnabled}
+                onChange={(e) => {
+                  setVoiceEnabled(e.target.checked);
+                  if (!e.target.checked) stopSpeaking();
+                }}
+                style={{ accentColor: "#3f51b5" }}
+              />
+              🔊 Voice replies
+            </label>
+          </div>
         </footer>
       </div>
     </div>

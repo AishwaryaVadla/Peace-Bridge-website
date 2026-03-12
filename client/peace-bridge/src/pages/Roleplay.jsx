@@ -1,6 +1,24 @@
 import { useState, useEffect, useRef } from "react";
 import { getScenarios, startRoleplay, sendRoleplay, endRoleplay } from "../utils/roleplayAPI";
 
+// ── Voice helpers ─────────────────────────────────────────────────────────────
+const SpeechRecognitionAPI =
+  typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
+
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = "en-US";
+  utt.rate = 1;
+  utt.pitch = 1;
+  window.speechSynthesis.speak(utt);
+}
+
+function stopSpeaking() {
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+}
+
 const DIFFICULTY_COLOR = {
   beginner: "#4caf50",
   intermediate: "#ff9800",
@@ -121,6 +139,9 @@ export default function Roleplay() {
   const [debrief, setDebrief] = useState(null);
   const [debriefError, setDebriefError] = useState("");
 
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef(null);
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -183,9 +204,34 @@ export default function Roleplay() {
     }
   };
 
+  const toggleMic = () => {
+    if (!SpeechRecognitionAPI) return;
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const rec = new SpeechRecognitionAPI();
+    rec.lang = "en-US";
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      setInput((prev) => (prev ? prev + " " + transcript : transcript));
+    };
+    rec.onend = () => setIsListening(false);
+    rec.onerror = () => setIsListening(false);
+    recognitionRef.current = rec;
+    rec.start();
+    setIsListening(true);
+  };
+
   const send = async () => {
     const text = input.trim();
     if (!text || isTyping || crisis || debrief) return;
+    stopSpeaking();
     setInput("");
     setIsTyping(true);
     setMessages((prev) => [...prev, { sender: "user", text }]);
@@ -198,10 +244,12 @@ export default function Roleplay() {
         return;
       }
 
+      const botText = data.reply;
       setMessages((prev) => [
         ...prev,
-        { sender: "bot", text: data.reply, coaching: data.coaching || null, score: data.score || null },
+        { sender: "bot", text: botText, coaching: data.coaching || null, score: data.score || null },
       ]);
+      if (voiceEnabled && botText) speak(botText);
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -548,23 +596,60 @@ export default function Roleplay() {
           </div>
         </div>
 
-        <footer className="chat-input-area">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder={crisis || debrief ? "Session has ended." : "Respond to the scenario…"}
-            rows={1}
-            className="chat-input"
-            disabled={!!crisis || !!debrief}
-          />
-          <button
-            className="send-btn"
-            onClick={send}
-            disabled={isTyping || !!crisis || !!debrief}
-          >
-            Send
-          </button>
+        <footer className="chat-input-area" style={{ flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, width: "100%", alignItems: "flex-end" }}>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKeyDown}
+              placeholder={crisis || debrief ? "Session has ended." : "Respond to the scenario…"}
+              rows={1}
+              className="chat-input"
+              disabled={!!crisis || !!debrief}
+            />
+            {SpeechRecognitionAPI && (
+              <button
+                onClick={toggleMic}
+                disabled={!!crisis || !!debrief}
+                title={isListening ? "Stop listening" : "Speak your response"}
+                style={{
+                  padding: "0 14px",
+                  height: 40,
+                  borderRadius: 8,
+                  border: `1px solid ${isListening ? "#f44336" : "#3f51b5"}`,
+                  background: isListening ? "#ffebee" : "white",
+                  color: isListening ? "#f44336" : "#3f51b5",
+                  cursor: "pointer",
+                  fontSize: "1.1rem",
+                  flexShrink: 0,
+                  animation: isListening ? "pulse 1.2s infinite" : "none",
+                }}
+              >
+                🎤
+              </button>
+            )}
+            <button
+              className="send-btn"
+              onClick={send}
+              disabled={isTyping || !!crisis || !!debrief}
+            >
+              Send
+            </button>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, alignSelf: "flex-end" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.82rem", color: "#666", cursor: "pointer", userSelect: "none" }}>
+              <input
+                type="checkbox"
+                checked={voiceEnabled}
+                onChange={(e) => {
+                  setVoiceEnabled(e.target.checked);
+                  if (!e.target.checked) stopSpeaking();
+                }}
+                style={{ accentColor: "#3f51b5" }}
+              />
+              🔊 Voice replies
+            </label>
+          </div>
         </footer>
       </div>
     </div>
