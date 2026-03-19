@@ -75,8 +75,33 @@ export default function Chatbot() {
   const recognitionRef = useRef(null);
   const bottomRef = useRef(null);
 
+  const CHAT_PERSIST_KEY = "pb_chat_session";
+
+  // Restore conversation if user navigated away (e.g. to mindfulness) and came back
+  useEffect(() => {
+    const saved = sessionStorage.getItem(CHAT_PERSIST_KEY);
+    if (saved) {
+      try {
+        const { messages: savedMsgs, sessionId: savedSid } = JSON.parse(saved);
+        if (Array.isArray(savedMsgs) && savedMsgs.length > 1) {
+          setMessages(savedMsgs);
+          if (savedSid) setSessionId(savedSid);
+        }
+      } catch {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist conversation on every message update so navigating away doesn't lose it
+  useEffect(() => {
+    if (messages.length > 1) {
+      sessionStorage.setItem(CHAT_PERSIST_KEY, JSON.stringify({ messages, sessionId }));
+    }
+  }, [messages, sessionId]);
+
   const resetChat = () => {
     stopSpeaking();
+    sessionStorage.removeItem(CHAT_PERSIST_KEY);
     setMessages([{ sender: "bot", text: getGreeting(), meta: {} }]);
     setInput("");
     setSummary("");

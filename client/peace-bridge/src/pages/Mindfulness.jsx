@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ── Breathing exercise ─────────────────────────────────────────────────────
@@ -306,9 +307,46 @@ const EXERCISES = [
 
 export default function Mindfulness() {
   const [active, setActive] = useState(null);
+  const [hasSavedChat, setHasSavedChat] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setHasSavedChat(!!sessionStorage.getItem("pb_chat_session"));
+  }, []);
 
   return (
     <div className="page" style={{ maxWidth: 700, paddingBottom: 60 }}>
+      {/* Return-to-chat banner */}
+      {hasSavedChat && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{
+            background: "#e8f1ff",
+            border: "1px solid #90aee8",
+            borderRadius: 12,
+            padding: "12px 18px",
+            marginBottom: 24,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 10,
+          }}
+        >
+          <span style={{ fontSize: "0.92rem", color: "#1a237e" }}>
+            💬 You have an ongoing conversation saved.
+          </span>
+          <button
+            className="nav-button"
+            style={{ padding: "7px 16px", fontSize: "0.88rem" }}
+            onClick={() => navigate("/chatbot")}
+          >
+            ← Continue conversation
+          </button>
+        </motion.div>
+      )}
+
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         <h1 style={{ color: "#1a237e", marginBottom: 4 }}>🌬️ Mindfulness & Grounding</h1>
         <p className="subtle" style={{ marginBottom: 32 }}>
