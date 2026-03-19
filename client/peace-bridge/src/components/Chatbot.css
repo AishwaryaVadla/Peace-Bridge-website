@@ -187,6 +187,59 @@
   cursor: pointer;
 }
 
+/* phrasing suggestions */
+.phrasing-box {
+  margin-top: 6px;
+  max-width: 74%;
+  align-self: flex-end;
+}
+
+.phrasing-toggle {
+  background: none;
+  border: 1px solid #c5cae9;
+  color: #5c6bc0;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.phrasing-toggle:hover {
+  background: #e8eaf6;
+}
+
+.phrasing-arrow {
+  font-size: 0.65rem;
+}
+
+.phrasing-list {
+  list-style: none;
+  padding: 8px 10px;
+  margin: 6px 0 0;
+  background: #f0f3ff;
+  border-radius: 10px;
+  border-left: 3px solid #7986cb;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.phrasing-list li {
+  font-size: 0.85rem;
+  color: #37474f;
+  line-height: 1.4;
+  padding: 4px 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.phrasing-list li:last-child {
+  border-bottom: none;
+}
+
 /* =======================================
    RESPONSIVE — TABLET (≤ 820px)
 ======================================= */

@@ -21,6 +21,25 @@ function stopSpeaking() {
   if (window.speechSynthesis) window.speechSynthesis.cancel();
 }
 
+function PhrasingSuggestions({ suggestions }) {
+  const [open, setOpen] = useState(false);
+  if (!suggestions?.length) return null;
+  return (
+    <div className="phrasing-box">
+      <button className="phrasing-toggle" onClick={() => setOpen((v) => !v)}>
+        💬 Try rephrasing <span className="phrasing-arrow">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <ul className="phrasing-list">
+          {suggestions.map((s, i) => (
+            <li key={i}>{s}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 const greetings = [
   "Hi, I'm Peace Bridge. What's going on for you today?",
   "Hey there — what's on your mind right now?",
@@ -102,8 +121,9 @@ export default function Chatbot() {
     if (!text) return;
 
     stopSpeaking();
-    const userMsg = { sender: "user", text, meta: {} };
     const reqId = Date.now();
+    const userMsgId = `user_${reqId}`;
+    const userMsg = { id: userMsgId, sender: "user", text, meta: {}, phrasing: [] };
     inFlightRef.current = reqId;
 
     setInput("");
@@ -153,6 +173,11 @@ export default function Chatbot() {
       };
 
       if (isCurrent) {
+        if (data.phrasing_suggestions?.length) {
+          setMessages((p) =>
+            p.map((m) => (m.id === userMsgId ? { ...m, phrasing: data.phrasing_suggestions } : m))
+          );
+        }
         setMessages((p) => [...p, botMsg]);
         if (voiceEnabled && bubbleText) speak(bubbleText);
         if (data.session_id && data.session_id !== sessionId) {
@@ -232,25 +257,28 @@ export default function Chatbot() {
           <div className="messages">
             {messages.map((m, i) => (
               <div
-                key={i}
+                key={m.id || i}
                 className={`bubble-row ${m.sender === "user" ? "bubble-row-user" : "bubble-row-bot"}`}
               >
                 {m.sender === "bot" && <div className="avatar bot-avatar">🕊️</div>}
-                <div className={`bubble ${m.sender === "user" ? "bubble-user" : "bubble-bot"}`}>
-                  <div className="bubble-text">
-                    {m.text.split("\n").map((line, idx) => (
-                      <p key={idx}>{line}</p>
-                    ))}
-                  </div>
-                  {m.sender === "bot" && m.meta?.primary_emotion && (
-                    <div className="emotion-chip">
-                      {m.meta.primary_emotion.toUpperCase()}
-                      {m.meta.secondary_emotions?.length
-                        ? ` • ${m.meta.secondary_emotions.join(", ")}`
-                        : ""}
-                      {m.meta.intensity ? ` • ${m.meta.intensity}` : ""}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: m.sender === "user" ? "flex-end" : "flex-start", minWidth: 0 }}>
+                  <div className={`bubble ${m.sender === "user" ? "bubble-user" : "bubble-bot"}`}>
+                    <div className="bubble-text">
+                      {m.text.split("\n").map((line, idx) => (
+                        <p key={idx}>{line}</p>
+                      ))}
                     </div>
-                  )}
+                    {m.sender === "bot" && m.meta?.primary_emotion && (
+                      <div className="emotion-chip">
+                        {m.meta.primary_emotion.toUpperCase()}
+                        {m.meta.secondary_emotions?.length
+                          ? ` • ${m.meta.secondary_emotions.join(", ")}`
+                          : ""}
+                        {m.meta.intensity ? ` • ${m.meta.intensity}` : ""}
+                      </div>
+                    )}
+                  </div>
+                  {m.sender === "user" && <PhrasingSuggestions suggestions={m.phrasing} />}
                 </div>
                 {m.sender === "user" && <div className="avatar user-avatar">🙂</div>}
               </div>

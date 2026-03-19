@@ -170,6 +170,28 @@ function pickFallback(userText = "", emotion = "unknown") {
   return "I hear you. Let’s slow it down for a second — what part of this is hitting you the hardest right now?";
 }
 
+async function getPhrasing(userText) {
+  try {
+    const raw = await chatComplete(
+      [
+        {
+          role: "system",
+          content:
+            'You are a communication coach. Rewrite the user\'s message in 3 calm, non-blaming, constructive ways suitable for mediation. Reply with ONLY a valid JSON array of exactly 3 short strings. Example: ["I feel unheard when we talk","I\'d appreciate more listening on both sides","Can we find a way to understand each other?"]',
+        },
+        { role: "user", content: `Message: "${userText}"` },
+      ],
+      { temperature: 0.5, num_predict: 120 }
+    );
+    const match = raw.match(/\[[\s\S]*?\]/);
+    if (match) {
+      const arr = JSON.parse(match[0]);
+      if (Array.isArray(arr) && arr.length) return arr.filter(Boolean).slice(0, 3);
+    }
+  } catch {}
+  return [];
+}
+
 // Simple semaphore to avoid piling up concurrent LLM requests
 let locked = false;
 const waiters = [];
@@ -357,9 +379,13 @@ router.post("/", async (req, res) => {
     ];
 
     let reply = "";
+    let phrasingSuggestions = [];
     try {
       const t0 = Date.now();
-      reply = await chatComplete(chatMessages, { temperature: 0.8, num_predict: 120 });
+      [reply, phrasingSuggestions] = await Promise.all([
+        chatComplete(chatMessages, { temperature: 0.8, num_predict: 120 }),
+        getPhrasing(userText),
+      ]);
       console.log("LLM ms:", Date.now() - t0);
     } catch (llmErr) {
       console.error("LLM error:", llmErr.message);
@@ -371,6 +397,7 @@ router.post("/", async (req, res) => {
         intensity: emotion.intensity,
         safety_level: emotion.safety_level,
         debug_mode: "FALLBACK_USED_LLM_ERROR",
+        phrasing_suggestions: [],
         session_id: sessionId,
       });
     }
@@ -458,6 +485,7 @@ router.post("/", async (req, res) => {
       intensity: showEmotion ? emotion.intensity : null,
       safety_level: emotion.safety_level,
       debug_mode: "AI_USED",
+      phrasing_suggestions: phrasingSuggestions,
       session_id: sessionId,
     });
   } catch (err) {
