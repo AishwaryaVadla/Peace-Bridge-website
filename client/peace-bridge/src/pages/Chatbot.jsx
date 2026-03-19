@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import "../components/Chatbot.css";
 import { detectEmotion } from "../utils/ruleEngine";
 import { sendChat, sendSessionSummary } from "../utils/chatbotAPI";
+
+const GROUNDING_KEYWORDS = /\b(angry|anger|furious|rage|stressed|stress|overwhelmed|anxious|anxiety|panic|frustrated|frustration|can't cope|can't deal|losing it|breaking down|burnt out|burnout)\b/i;
+
+function shouldSuggestGrounding(text) {
+  return GROUNDING_KEYWORDS.test(text);
+}
 
 // ── Voice helpers ─────────────────────────────────────────────────────────────
 const SpeechRecognitionAPI =
@@ -170,6 +177,7 @@ export default function Chatbot() {
           safety_level: data.safety_level || "normal",
           debug_mode: data.debug_mode,
         },
+        suggestGrounding: shouldSuggestGrounding(text),
       };
 
       if (isCurrent) {
@@ -278,6 +286,14 @@ export default function Chatbot() {
                       </div>
                     )}
                   </div>
+                  {m.sender === "bot" && m.suggestGrounding && (
+                    <div className="grounding-nudge">
+                      🌬️ Feeling overwhelmed?{" "}
+                      <Link to="/mindfulness" className="grounding-nudge-link">
+                        Try a quick grounding exercise →
+                      </Link>
+                    </div>
+                  )}
                   {m.sender === "user" && <PhrasingSuggestions suggestions={m.phrasing} />}
                 </div>
                 {m.sender === "user" && <div className="avatar user-avatar">🙂</div>}

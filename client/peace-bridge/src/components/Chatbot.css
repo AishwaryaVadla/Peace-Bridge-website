@@ -187,6 +187,28 @@
   cursor: pointer;
 }
 
+/* grounding nudge */
+.grounding-nudge {
+  margin-top: 6px;
+  background: #e0f2f1;
+  border: 1px solid #80cbc4;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  color: #00695c;
+  max-width: 74%;
+}
+
+.grounding-nudge-link {
+  color: #00695c;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.grounding-nudge-link:hover {
+  color: #004d40;
+}
+
 /* phrasing suggestions */
 .phrasing-box {
   margin-top: 6px;

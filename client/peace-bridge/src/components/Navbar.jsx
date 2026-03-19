@@ -8,6 +8,7 @@ const NAV_LINKS = [
   { label: "Role-Play", to: "/roleplay" },
   { label: "Teaching", to: "/teaching" },
   { label: "Journal", to: "/journal" },
+  { label: "Mindfulness", to: "/mindfulness" },
   { label: "Blogs", to: "/blogs" },
   { label: "About", to: "/about" },
 ];
