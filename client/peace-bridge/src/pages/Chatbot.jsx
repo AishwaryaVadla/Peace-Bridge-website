@@ -314,7 +314,11 @@ export default function Chatbot() {
                   {m.sender === "bot" && m.suggestGrounding && (
                     <div className="grounding-nudge">
                       🌬️ Feeling overwhelmed?{" "}
-                      <Link to="/mindfulness" className="grounding-nudge-link">
+                      <Link
+                        to="/mindfulness"
+                        state={{ fromChat: true }}
+                        className="grounding-nudge-link"
+                      >
                         Try a quick grounding exercise →
                       </Link>
                     </div>

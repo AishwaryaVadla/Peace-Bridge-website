@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ── Breathing exercise ─────────────────────────────────────────────────────
@@ -307,17 +307,14 @@ const EXERCISES = [
 
 export default function Mindfulness() {
   const [active, setActive] = useState(null);
-  const [hasSavedChat, setHasSavedChat] = useState(false);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    setHasSavedChat(!!sessionStorage.getItem("pb_chat_session"));
-  }, []);
+  const location = useLocation();
+  const fromChat = !!location.state?.fromChat;
 
   return (
     <div className="page" style={{ maxWidth: 700, paddingBottom: 60 }}>
-      {/* Return-to-chat banner */}
-      {hasSavedChat && (
+      {/* Return-to-chat banner — only shown when arriving from the chatbot nudge */}
+      {fromChat && (
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
