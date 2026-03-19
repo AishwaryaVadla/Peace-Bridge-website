@@ -43,21 +43,22 @@ function BreathingExercise({ onBack }) {
   };
 
   return (
-    <div style={{ textAlign: "center" }}>
-      <button className="nav-button alt" onClick={onBack} style={{ marginBottom: 24 }}>← Back</button>
-      <h2 style={{ color: "#1a237e", marginBottom: 6 }}>Box Breathing</h2>
-      <p className="subtle" style={{ marginBottom: 32, maxWidth: 420, margin: "0 auto 32px" }}>
+    <div style={{ textAlign: "center", padding: "8px 0 40px" }}>
+      <button className="nav-button alt" onClick={onBack} style={{ marginBottom: 36 }}>← Back</button>
+
+      <h2 style={{ color: "#1a237e", marginBottom: 10, fontSize: "1.6rem" }}>Box Breathing</h2>
+      <p className="subtle" style={{ maxWidth: 400, margin: "0 auto 52px", lineHeight: 1.7, fontSize: "0.95rem" }}>
         Inhale 4 s · Hold 4 s · Exhale 6 s — repeat to calm your nervous system.
       </p>
 
       {/* Animated circle */}
-      <div style={{ display: "flex", justifyContent: "center", marginBottom: 32 }}>
+      <div style={{ display: "flex", justifyContent: "center", marginBottom: 52 }}>
         <motion.div
           animate={{ scale: phase.scale, backgroundColor: phase.bg, borderColor: phase.color }}
           transition={{ duration: phase.duration - 0.1, ease: "easeInOut" }}
           style={{
-            width: 140,
-            height: 140,
+            width: 160,
+            height: 160,
             borderRadius: "50%",
             border: `4px solid ${phase.color}`,
             display: "flex",
@@ -67,11 +68,11 @@ function BreathingExercise({ onBack }) {
           }}
         >
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "1.1rem", fontWeight: 700, color: phase.color }}>
+            <div style={{ fontSize: "1.05rem", fontWeight: 700, color: phase.color, marginBottom: 6 }}>
               {running ? phase.label : "Ready"}
             </div>
             {running && (
-              <div style={{ fontSize: "2rem", fontWeight: 700, color: phase.color, lineHeight: 1 }}>
+              <div style={{ fontSize: "2.2rem", fontWeight: 700, color: phase.color, lineHeight: 1 }}>
                 {phase.duration - elapsed}
               </div>
             )}
@@ -79,23 +80,23 @@ function BreathingExercise({ onBack }) {
         </motion.div>
       </div>
 
-      {/* Progress arc */}
-      {running && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ width: 200, height: 6, background: "#e0e0e0", borderRadius: 3, margin: "0 auto" }}>
-            <motion.div
-              style={{ height: 6, borderRadius: 3, background: phase.color }}
-              animate={{ width: `${progress * 100}%` }}
-              transition={{ duration: 1, ease: "linear" }}
-            />
-          </div>
-          {cycles > 0 && (
-            <p className="subtle" style={{ marginTop: 8, fontSize: "0.85rem" }}>
-              {cycles} cycle{cycles > 1 ? "s" : ""} completed
+      {/* Progress bar + cycles */}
+      <div style={{ minHeight: 48, marginBottom: 40, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+        {running && (
+          <>
+            <div style={{ width: 220, height: 6, background: "#e0e0e0", borderRadius: 3 }}>
+              <motion.div
+                style={{ height: 6, borderRadius: 3, background: phase.color }}
+                animate={{ width: `${progress * 100}%` }}
+                transition={{ duration: 1, ease: "linear" }}
+              />
+            </div>
+            <p className="subtle" style={{ fontSize: "0.85rem", margin: 0 }}>
+              {cycles > 0 ? `${cycles} cycle${cycles > 1 ? "s" : ""} completed` : "Starting…"}
             </p>
-          )}
-        </div>
-      )}
+          </>
+        )}
+      </div>
 
       <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
         {!running ? (
