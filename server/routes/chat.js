@@ -28,10 +28,12 @@ const DEFAULT_REPLY = {
   debug_mode: "FALLBACK_USED",
 };
 
-function buildSystemPrompt(phase = "venting") {
+function buildSystemPrompt(phase = "venting", turnCount = 1) {
   const phaseGuidance = {
     venting:
-      "Validate the person’s emotion and make them feel heard. Do not offer solutions, advice, or a different perspective yet.",
+      turnCount <= 1
+        ? "Warmly greet the person and invite them to share what’s on their mind. Do NOT assume they are upset, angry, or in conflict — you have no context yet. Ask one open, gentle question."
+        : "Reflect back only what the person has actually said. Validate emotions they have explicitly expressed — never project or invent feelings they have not mentioned. Make them feel heard without putting words in their mouth.",
     clarifying:
       "Help the person articulate exactly what the core issue is. Ask one concise clarifying question to surface the specific conflict.",
     perspective:
@@ -48,7 +50,12 @@ Current phase: ${String(phase).toUpperCase()}
 
 Your focus for this response: ${phaseGuidance[phase] || "Stay warm, grounded, and ask one thoughtful question."}
 
-Response rules: Write 3 to 6 sentences only. Ask at most one question. Never repeat phrasing from earlier in the conversation. Never introduce unrelated topics. Write in natural prose — no headings, bullet lists, or numbered steps. Tone: warm, grounded, non-judgmental.`;
+Critical rules:
+- NEVER invent or assume emotions the user has not expressed. Only reflect what they actually said.
+- If the user’s message is casual or neutral, respond naturally — do not treat every message as a crisis.
+- Write 3 to 5 sentences only. Ask at most one question.
+- Natural prose only — no headings, bullet points, or numbered steps.
+- Tone: warm, grounded, non-judgmental.`;
 }
 
 /**
@@ -385,7 +392,7 @@ router.post("/", async (req, res) => {
 
     // Build chat messages (DB-driven context)
     const chatMessages = [
-      { role: "system", content: buildSystemPrompt(nextPhase) },
+      { role: "system", content: buildSystemPrompt(nextPhase, newTurnCount) },
       ...contextMessages,
       { role: "user", content: userText },
     ];
