@@ -4,11 +4,6 @@ import "../components/Chatbot.css";
 import { detectEmotion } from "../utils/ruleEngine";
 import { sendChat, sendSessionSummary } from "../utils/chatbotAPI";
 
-const GROUNDING_KEYWORDS = /\b(angry|anger|furious|rage|stressed|stress|overwhelmed|anxious|anxiety|panic|frustrated|frustration|can't cope|can't deal|losing it|breaking down|burnt out|burnout|depressed|depression|sad|sadness|exhausted|exhaustion|drained|hopeless|helpless|struggling|can't handle|falling apart|too much|rough time|tough time|tough phase|hard time|going through|so much|heavy|weight on|lost|confused|distressed|upset|miserable|numb|empty|alone|lonely|worthless|failing|failure|can't take|can't do this|done with|given up|give up)\b/i;
-
-function shouldSuggestGrounding(text) {
-  return GROUNDING_KEYWORDS.test(text);
-}
 
 // ── Voice helpers ─────────────────────────────────────────────────────────────
 const SpeechRecognitionAPI =
@@ -202,7 +197,7 @@ export default function Chatbot() {
           safety_level: data.safety_level || "normal",
           debug_mode: data.debug_mode,
         },
-        suggestGrounding: shouldSuggestGrounding(text),
+        suggestGrounding: !!data.suggest_mindfulness,
       };
 
       if (isCurrent) {

@@ -489,6 +489,10 @@ router.post("/", async (req, res) => {
       console.warn("Session update failed:", e.message);
     }
 
+    const suggestMindfulness =
+      emotion.intensity === "high" &&
+      ["fear", "sad", "stressed", "angry", "frustrated"].includes(emotion.primary_emotion);
+
     return res.json({
       ...DEFAULT_REPLY,
       assistant_message: reply,
@@ -498,6 +502,7 @@ router.post("/", async (req, res) => {
       safety_level: emotion.safety_level,
       debug_mode: "AI_USED",
       phrasing_suggestions: phrasingSuggestions,
+      suggest_mindfulness: suggestMindfulness,
       session_id: sessionId,
     });
   } catch (err) {
