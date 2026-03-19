@@ -177,17 +177,29 @@ async function getPhrasing(userText) {
         {
           role: "system",
           content:
-            'You are a communication coach. Rewrite the user\'s message in 3 calm, non-blaming, constructive ways suitable for mediation. Reply with ONLY a valid JSON array of exactly 3 short strings. Example: ["I feel unheard when we talk","I\'d appreciate more listening on both sides","Can we find a way to understand each other?"]',
+            'You are a communication coach. Rewrite the user\'s message in 3 calm, non-blaming, constructive ways suitable for mediation. Reply with ONLY a valid JSON array of exactly 3 short strings. No markdown, no explanations. Example: ["I feel unheard when we talk","I\'d appreciate more listening on both sides","Can we find a way to understand each other?"]',
         },
         { role: "user", content: `Message: "${userText}"` },
       ],
-      { temperature: 0.5, num_predict: 120 }
+      { temperature: 0.5, num_predict: 150 }
     );
-    const match = raw.match(/\[[\s\S]*?\]/);
+
+    // Strip markdown code fences if present
+    const stripped = raw.replace(/```(?:json)?/gi, "").trim();
+
+    // Greedy match — captures the full array including nested quotes
+    const match = stripped.match(/\[[\s\S]*\]/);
     if (match) {
       const arr = JSON.parse(match[0]);
       if (Array.isArray(arr) && arr.length) return arr.filter(Boolean).slice(0, 3);
     }
+
+    // Fallback: extract numbered/bulleted lines if JSON failed
+    const lines = stripped
+      .split("\n")
+      .map((l) => l.replace(/^[\s\d\-\.\*•"]+/, "").replace(/[",]+$/, "").trim())
+      .filter((l) => l.length > 8 && l.length < 200);
+    if (lines.length >= 2) return lines.slice(0, 3);
   } catch {}
   return [];
 }

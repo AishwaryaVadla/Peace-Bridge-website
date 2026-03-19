@@ -195,21 +195,22 @@
 }
 
 .phrasing-toggle {
-  background: none;
+  background: #eef0fb;
   border: 1px solid #c5cae9;
   color: #5c6bc0;
   border-radius: 8px;
-  padding: 4px 10px;
-  font-size: 0.78rem;
+  padding: 5px 12px;
+  font-size: 0.8rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 5px;
   white-space: nowrap;
+  font-weight: 500;
 }
 
 .phrasing-toggle:hover {
-  background: #e8eaf6;
+  background: #dde0f8;
 }
 
 .phrasing-arrow {
