@@ -23,6 +23,90 @@ function stopSpeaking() {
   if (window.speechSynthesis) window.speechSynthesis.cancel();
 }
 
+// ── Crisis detection (mirrors backend) ────────────────────────────────────
+const CRISIS_PATTERN =
+  /suicid|kill myself|end my life|end it all|can't go on|hurt myself|harm myself|self.harm|want to die|wanna die|don't want to (be here|live|exist)|no reason to live|better off (without me|dead|gone)|can't take it anymore|can't handle (this|it|life) anymore|nothing to live for|thinking about (ending|hurting)|make it stop (forever|permanently)|disappear forever|hopeless and alone|nobody (cares|would miss me)/i;
+
+function isCrisis(text) {
+  return CRISIS_PATTERN.test(text);
+}
+
+function CrisisCard() {
+  return (
+    <div
+      role="alert"
+      aria-live="assertive"
+      style={{
+        background: "#fff8f0",
+        border: "2px solid #e53935",
+        borderRadius: 12,
+        padding: "18px 20px",
+        margin: "10px 0",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <span style={{ fontSize: "1.3rem" }}>🚨</span>
+        <strong style={{ color: "#b71c1c", fontSize: "1rem" }}>You don't have to face this alone</strong>
+      </div>
+      <p style={{ color: "#5d3a3a", fontSize: "0.92rem", margin: "0 0 14px", lineHeight: 1.6 }}>
+        It sounds like you're going through something really painful right now. Please reach out to a crisis counselor — they're available 24/7 and are there to listen without judgment.
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <a
+          href="https://988lifeline.org"
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            background: "#e53935",
+            color: "white",
+            borderRadius: 8,
+            padding: "9px 14px",
+            fontWeight: 700,
+            fontSize: "0.92rem",
+            textDecoration: "none",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          📞 Call or text 988 — Suicide & Crisis Lifeline (US)
+        </a>
+        <a
+          href="https://www.crisistextline.org"
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            background: "#f5f5f5",
+            color: "#333",
+            borderRadius: 8,
+            padding: "9px 14px",
+            fontSize: "0.9rem",
+            textDecoration: "none",
+            border: "1px solid #ddd",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          💬 Text HOME to 741741 — Crisis Text Line
+        </a>
+        <a
+          href="https://www.iasp.info/resources/Crisis_Centres/"
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            color: "#555",
+            fontSize: "0.85rem",
+            textDecoration: "underline",
+          }}
+        >
+          🌍 International crisis centre directory
+        </a>
+      </div>
+    </div>
+  );
+}
+
 function PhrasingSuggestions({ suggestions }) {
   const [open, setOpen] = useState(false);
   if (!suggestions?.length) return null;
@@ -155,6 +239,18 @@ export default function Chatbot() {
 
     setInput("");
     setIsSending(true);
+
+    // Show crisis card immediately — don't wait for the API
+    if (isCrisis(text)) {
+      setMessages((prev) => [
+        ...prev,
+        userMsg,
+        { id: `crisis_${reqId}`, sender: "crisis", text: "", meta: {} },
+      ]);
+      setIsSending(false);
+      return;
+    }
+
     setIsTyping(true);
     setMessages((prev) => [...prev, userMsg]);
 
@@ -283,7 +379,9 @@ export default function Chatbot() {
 
         <div className="chat-window">
           <div className="messages">
-            {messages.map((m, i) => (
+            {messages.map((m, i) => m.sender === "crisis" ? (
+              <CrisisCard key={m.id || i} />
+            ) : (
               <div
                 key={m.id || i}
                 className={`bubble-row ${m.sender === "user" ? "bubble-row-user" : "bubble-row-bot"}`}

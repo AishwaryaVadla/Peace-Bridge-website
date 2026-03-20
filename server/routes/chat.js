@@ -133,8 +133,10 @@ function detectEmotion(userText = "") {
 
 function containsCrisisLanguage(text = "") {
   const t = text.toLowerCase();
-  const crisis = /suicid|kill myself|end my life|can't go on|hurt myself/;
-  const violence = /(kill|attack|hurt (them|someone)|violence|threaten|gun|knife|shoot|stab|beat)/;
+  const crisis =
+    /suicid|kill myself|end my life|end it all|can't go on|hurt myself|harm myself|self.harm|want to die|wanna die|don't want to (be here|live|exist)|no reason to live|better off (without me|dead|gone)|can't take it anymore|can't handle (this|it|life) anymore|nothing to live for|thinking about (ending|hurting)|make it stop (forever|permanently)|disappear forever|hopeless and alone|nobody (cares|would miss me)/;
+  const violence =
+    /(kill|attack|hurt (them|him|her|someone)|violence|threaten|gun|knife|shoot|stab|beat (them|him|her))/;
   return crisis.test(t) || violence.test(t);
 }
 
