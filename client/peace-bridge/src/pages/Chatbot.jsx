@@ -107,7 +107,7 @@ function CrisisCard() {
   );
 }
 
-function PhrasingSuggestions({ suggestions }) {
+function PhrasingSuggestions({ suggestions, onSelect }) {
   const [open, setOpen] = useState(false);
   if (!suggestions?.length) return null;
   return (
@@ -118,7 +118,15 @@ function PhrasingSuggestions({ suggestions }) {
       {open && (
         <ul className="phrasing-list">
           {suggestions.map((s, i) => (
-            <li key={i}>{s}</li>
+            <li key={i}>
+              <button
+                className="phrasing-item-btn"
+                onClick={() => onSelect(s)}
+                title="Click to use this phrasing"
+              >
+                {s}
+              </button>
+            </li>
           ))}
         </ul>
       )}
@@ -416,7 +424,7 @@ export default function Chatbot() {
                       </Link>
                     </div>
                   )}
-                  {m.sender === "user" && <PhrasingSuggestions suggestions={m.phrasing} />}
+                  {m.sender === "user" && <PhrasingSuggestions suggestions={m.phrasing} onSelect={setInput} />}
                 </div>
                 {m.sender === "user" && <div className="avatar user-avatar">🙂</div>}
               </div>
