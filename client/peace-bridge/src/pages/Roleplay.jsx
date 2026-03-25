@@ -139,6 +139,7 @@ export default function Roleplay() {
   const [debrief, setDebrief] = useState(null);
   const [debriefError, setDebriefError] = useState("");
 
+  const [isStarting, setIsStarting] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [micError, setMicError] = useState("");
@@ -188,8 +189,7 @@ export default function Roleplay() {
   const confirmStart = async () => {
     const scenario = pendingScenario;
     setStartError("");
-    setSelectedScenario(scenario);
-    setPendingScenario(null);
+    setIsStarting(true);
     setMessages([]);
     setInput("");
     setCrisis(false);
@@ -198,10 +198,12 @@ export default function Roleplay() {
       const data = await startRoleplay(scenario.id, customContext.trim());
       setSessionId(data.session_id);
       setMessages([{ sender: "bot", text: data.reply }]);
+      setSelectedScenario(scenario);
+      setPendingScenario(null);
     } catch (e) {
       setStartError(e.message || "Failed to start the scenario. Please try again.");
-      setSelectedScenario(null);
-      setPendingScenario(scenario); // go back to setup on error
+    } finally {
+      setIsStarting(false);
     }
   };
 
@@ -358,18 +360,41 @@ export default function Roleplay() {
             />
           </div>
 
-          <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
-            <button
-              className="send-btn"
-              style={{ background: "white", color: "#3f51b5", border: "1px solid #3f51b5" }}
-              onClick={() => { setPendingScenario(null); setStartError(""); }}
-            >
-              ← Back
-            </button>
-            <button className="send-btn" onClick={confirmStart}>
-              {customContext.trim() ? "Start with my context" : "Start with default context"}
-            </button>
-          </div>
+          {isStarting ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "flex-end" }}>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                background: "#f0f3ff",
+                border: "1px solid #c5cae9",
+                borderRadius: 10,
+                padding: "10px 18px",
+              }}>
+                <div className="dots" style={{ display: "inline-flex", gap: 5 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#5c6bc0", display: "inline-block", animation: "blink 1s infinite" }} />
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#5c6bc0", display: "inline-block", animation: "blink 1s infinite", animationDelay: "0.15s" }} />
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#5c6bc0", display: "inline-block", animation: "blink 1s infinite", animationDelay: "0.3s" }} />
+                </div>
+                <span style={{ color: "#3f51b5", fontSize: "0.92rem", fontWeight: 500 }}>
+                  {customContext.trim() ? "Tailoring scenario to your context…" : "Preparing scenario…"}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+              <button
+                className="send-btn"
+                style={{ background: "white", color: "#3f51b5", border: "1px solid #3f51b5" }}
+                onClick={() => { setPendingScenario(null); setStartError(""); }}
+              >
+                ← Back
+              </button>
+              <button className="send-btn" onClick={confirmStart}>
+                {customContext.trim() ? "Start with my context" : "Start with default context"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
