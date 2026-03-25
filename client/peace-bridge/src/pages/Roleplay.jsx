@@ -172,6 +172,9 @@ export default function Roleplay() {
     Community: `e.g. "The neighborhood association voted to change the park hours without consulting residents who actually use it in the evenings…"`,
     Defamation: `e.g. "A former colleague has been telling people at industry events that I was let go for misconduct, which is completely untrue…"`,
     Intergenerational: `e.g. "My parents keep making major decisions about the family business without including me, even though I've been working there for five years…"`,
+    Geopolitical: `e.g. "My neighbor and I used to be close, but since the war started back home they've been hostile toward me — I've done nothing to them personally but I feel their anger every day…"`,
+    Religious: `e.g. "I've worked here for three years and my performance reviews have always been strong, but since I started wearing my hijab and taking prayer breaks I've been left out of meetings and skipped for a promotion…"`,
+    Racial: `e.g. "I was sitting in the common area reading when security approached me, asked for my ID, and followed me for ten minutes — none of my white neighbors have ever been treated this way…"`,
   };
 
   const getPlaceholder = (scenario) =>
