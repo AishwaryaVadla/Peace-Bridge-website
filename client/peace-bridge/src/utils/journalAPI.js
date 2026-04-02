@@ -43,3 +43,11 @@ export async function updateJournal(id, entry) {
 export async function deleteJournal(id) {
   return fetchJson(`/api/journal/${id}`, { method: "DELETE" });
 }
+
+export async function getJournalInsight(content, mood) {
+  return fetchJson("/api/journal/insight", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content, mood }),
+  });
+}
