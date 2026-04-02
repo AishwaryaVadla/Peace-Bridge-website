@@ -187,6 +187,50 @@ async function appendTrajectoryScore(sessionId, score, existingTrajectory) {
   } catch { /* non-fatal */ }
 }
 
+// ── Live coaching ──────────────────────────────────────────────────────────────
+
+async function runCoaching(userText, sessionId) {
+  const prompt = `You are a conflict-resolution coach evaluating a single message sent during a mediation roleplay.
+
+Message: "${userText}"
+
+Evaluate strictly and return ONLY valid JSON, no markdown:
+{
+  "tone": "calm / neutral / slightly aggressive / aggressive",
+  "empathy": "low / medium / high",
+  "suggestion": "one concrete improvement (1 sentence)"
+}`;
+
+  try {
+    const raw = await chatComplete(
+      [{ role: "user", content: prompt }],
+      { temperature: 0.2, num_predict: 120 }
+    );
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    return JSON.parse(match[0]);
+  } catch {
+    return null;
+  }
+}
+
+// ── Rewrite helper ─────────────────────────────────────────────────────────────
+
+async function runRewrite(userText) {
+  const prompt = `Rewrite the following message to be calm, respectful, and clear. Keep the same intent but improve the tone for a conflict resolution conversation. Return ONLY the rewritten message with no explanation or quotes.
+
+Original: "${userText}"`;
+
+  try {
+    return await chatComplete(
+      [{ role: "user", content: prompt }],
+      { temperature: 0.5, num_predict: 150 }
+    );
+  } catch {
+    return null;
+  }
+}
+
 // ── Debrief engine ─────────────────────────────────────────────────────────────
 
 async function runDebrief(sessionId, scenarioTitle, memory) {
@@ -198,14 +242,16 @@ async function runDebrief(sessionId, scenarioTitle, memory) {
     .order("created_at", { ascending: true });
 
   if (msgsErr) console.error("runDebrief msgs error:", msgsErr);
-  if (!msgs || msgs.length < 2) return "Session was too short to generate meaningful feedback.";
+  if (!msgs || msgs.length < 2) {
+    return { well_done: "Session was too short to evaluate.", improve: "", tip: "", next_step: "" };
+  }
 
   const memoryContext = memory
     ? `\nSession memory:\n${JSON.stringify(memory, null, 2)}\n`
     : "";
 
   const transcript = msgs
-    .slice(-20) // last 20 for debrief (enough for quality, avoids prompt explosion)
+    .slice(-20)
     .map((m) => `${m.role === "user" ? "Learner" : "Character"}: ${m.content}`)
     .join("\n");
 
@@ -215,25 +261,33 @@ Scenario: "${scenarioTitle}"${memoryContext}
 Recent transcript:
 ${transcript}
 
-Write a debrief (3–5 sentences) covering:
-1. What the learner did well
-2. One specific area to improve
-3. One concrete tip for next time
-
-Be encouraging and specific. Write in plain paragraphs, no bullet points.`;
+Return ONLY valid JSON, no markdown:
+{
+  "well_done": "one specific thing the learner did well (1–2 sentences)",
+  "improve": "one specific area to improve (1 sentence)",
+  "tip": "one concrete technique for next time (1 sentence)",
+  "next_step": "one actionable opening phrase they can use, e.g. \\"Try starting with: I understand your concern about…\\""
+}`;
 
   try {
-    return await chatComplete(
+    const raw = await chatComplete(
       [{ role: "user", content: prompt }],
-      { temperature: 0.5, num_predict: 250 }
+      { temperature: 0.5, num_predict: 300 }
     );
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (match) {
+      const parsed = JSON.parse(match[0]);
+      return parsed;
+    }
+    // Fallback: return raw text in well_done field
+    return { well_done: raw, improve: "", tip: "", next_step: "" };
   } catch (ollamaErr) {
     console.error("runDebrief Ollama error:", ollamaErr?.message);
-    return "Unable to generate debrief at this time.";
+    return { well_done: "Unable to generate debrief at this time.", improve: "", tip: "", next_step: "" };
   }
   } catch (outerErr) {
     console.error("runDebrief outer error:", outerErr?.message);
-    return "Unable to generate debrief at this time.";
+    return { well_done: "Unable to generate debrief at this time.", improve: "", tip: "", next_step: "" };
   }
 }
 
@@ -383,6 +437,34 @@ router.post("/", async (req, res) => {
   }
 });
 
+// POST /api/roleplay/coaching  (live feedback on user message)
+router.post("/coaching", async (req, res) => {
+  try {
+    const { message, session_id } = req.body || {};
+    const userText = (message || "").trim();
+    if (!userText) return res.status(400).json({ error: "message is required" });
+    const coaching = await runCoaching(userText, session_id);
+    return res.json({ coaching });
+  } catch (err) {
+    console.error("Roleplay /coaching error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/roleplay/rewrite  (suggest improved phrasing)
+router.post("/rewrite", async (req, res) => {
+  try {
+    const { message } = req.body || {};
+    const userText = (message || "").trim();
+    if (!userText) return res.status(400).json({ error: "message is required" });
+    const rewrite = await runRewrite(userText);
+    return res.json({ rewrite: rewrite || userText });
+  } catch (err) {
+    console.error("Roleplay /rewrite error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // POST /api/roleplay/end  (debrief)
 router.post("/end", async (req, res) => {
   try {
@@ -406,7 +488,7 @@ router.post("/end", async (req, res) => {
       if (sc?.title) scenarioTitle = sc.title;
     }
 
-    // runDebrief catches all its own errors — always returns a string
+    // runDebrief catches all its own errors — always returns a structured object
     const debrief = await runDebrief(session_id, scenarioTitle, session?.roleplay_memory ?? null);
 
     // Fire-and-forget: mark session ended (column may not exist yet)

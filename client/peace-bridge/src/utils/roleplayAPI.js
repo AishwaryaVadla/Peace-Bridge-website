@@ -56,3 +56,25 @@ export async function endRoleplay(sessionId) {
   }
   return res.json();
 }
+
+export async function getCoaching(message, sessionId) {
+  const res = await fetch(`${API_BASE}/api/roleplay/coaching`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, session_id: sessionId }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.coaching || null;
+}
+
+export async function rewriteMessage(message) {
+  const res = await fetch(`${API_BASE}/api/roleplay/rewrite`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.rewrite || null;
+}

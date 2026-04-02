@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { getScenarios, startRoleplay, sendRoleplay, endRoleplay } from "../utils/roleplayAPI";
+import { getScenarios, startRoleplay, sendRoleplay, endRoleplay, getCoaching, rewriteMessage } from "../utils/roleplayAPI";
 
 // ── Voice helpers ─────────────────────────────────────────────────────────────
 const SpeechRecognitionAPI =
@@ -139,6 +139,14 @@ export default function Roleplay() {
   const [debrief, setDebrief] = useState(null);
   const [debriefError, setDebriefError] = useState("");
 
+  // coaching
+  const [coaching, setCoaching] = useState(null);
+  const [coachingLoading, setCoachingLoading] = useState(false);
+
+  // rewrite
+  const [rewriteLoading, setRewriteLoading] = useState(false);
+  const [rewriteSuggestion, setRewriteSuggestion] = useState(null);
+
   const [isStarting, setIsStarting] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -247,8 +255,17 @@ export default function Roleplay() {
     if (!text || isTyping || crisis || debrief) return;
     stopSpeaking();
     setInput("");
+    setRewriteSuggestion(null);
+    setCoaching(null);
     setIsTyping(true);
     setMessages((prev) => [...prev, { sender: "user", text }]);
+
+    // Fire coaching in parallel (non-blocking)
+    setCoachingLoading(true);
+    getCoaching(text, sessionId)
+      .then((c) => setCoaching(c))
+      .finally(() => setCoachingLoading(false));
+
     try {
       const data = await sendRoleplay(text, sessionId);
 
@@ -261,7 +278,7 @@ export default function Roleplay() {
       const botText = data.reply;
       setMessages((prev) => [
         ...prev,
-        { sender: "bot", text: botText, coaching: data.coaching || null, score: data.score || null },
+        { sender: "bot", text: botText, score: data.score || null },
       ]);
       if (voiceEnabled && botText) speak(botText);
     } catch {
@@ -272,6 +289,19 @@ export default function Roleplay() {
     } finally {
       setIsTyping(false);
       inputRef.current?.focus();
+    }
+  };
+
+  const handleRewrite = async () => {
+    const text = input.trim();
+    if (!text || rewriteLoading) return;
+    setRewriteLoading(true);
+    setRewriteSuggestion(null);
+    try {
+      const result = await rewriteMessage(text);
+      if (result) setRewriteSuggestion(result.trim());
+    } finally {
+      setRewriteLoading(false);
     }
   };
 
@@ -310,6 +340,10 @@ export default function Roleplay() {
     setDebrief(null);
     setDebriefError("");
     setEnding(false);
+    setCoaching(null);
+    setCoachingLoading(false);
+    setRewriteSuggestion(null);
+    setRewriteLoading(false);
   };
 
   // ── Setup screen (between picker and chat) ───────────────────────────────────
@@ -621,9 +655,36 @@ export default function Roleplay() {
                 {ending && !debrief && (
                   <p style={{ margin: "10px 0 0", color: "#555" }}>Generating your feedback…</p>
                 )}
-                {debrief && (
+                {debrief && typeof debrief === "object" ? (
+                  <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+                    {debrief.well_done && (
+                      <div style={{ background: "#c8e6c9", borderRadius: 8, padding: "10px 14px" }}>
+                        <span style={{ fontWeight: 700, display: "block", marginBottom: 4 }}>✅ What you did well</span>
+                        <span>{debrief.well_done}</span>
+                      </div>
+                    )}
+                    {debrief.improve && (
+                      <div style={{ background: "#fff9c4", borderRadius: 8, padding: "10px 14px", color: "#5d4037" }}>
+                        <span style={{ fontWeight: 700, display: "block", marginBottom: 4 }}>🔧 Area to improve</span>
+                        <span>{debrief.improve}</span>
+                      </div>
+                    )}
+                    {debrief.tip && (
+                      <div style={{ background: "#e3f2fd", borderRadius: 8, padding: "10px 14px", color: "#1a237e" }}>
+                        <span style={{ fontWeight: 700, display: "block", marginBottom: 4 }}>💡 Tip for next time</span>
+                        <span>{debrief.tip}</span>
+                      </div>
+                    )}
+                    {debrief.next_step && (
+                      <div style={{ background: "#f3e5f5", borderRadius: 8, padding: "10px 14px", color: "#4a148c" }}>
+                        <span style={{ fontWeight: 700, display: "block", marginBottom: 4 }}>🚀 Try this next time</span>
+                        <span>{debrief.next_step}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : debrief ? (
                   <p style={{ margin: "10px 0 0", whiteSpace: "pre-wrap" }}>{debrief}</p>
-                )}
+                ) : null}
                 {debriefError && (
                   <p style={{ margin: "10px 0 0", color: "#b71c1c" }}>{debriefError}</p>
                 )}
@@ -635,11 +696,70 @@ export default function Roleplay() {
         </div>
 
         <footer className="chat-input-area" style={{ flexDirection: "column", gap: 8 }}>
+          {/* Coaching feedback panel */}
+          {(coaching || coachingLoading) && !crisis && !debrief && (
+            <div style={{
+              width: "100%",
+              background: "#f0f3ff",
+              border: "1px solid #c5cae9",
+              borderRadius: 8,
+              padding: "10px 14px",
+              fontSize: "0.82rem",
+              color: "#333",
+            }}>
+              {coachingLoading ? (
+                <span style={{ color: "#7986cb" }}>Analyzing your message…</span>
+              ) : coaching ? (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px", alignItems: "flex-start" }}>
+                  <span style={{ fontWeight: 600, color: "#3f51b5", marginRight: 4 }}>Coaching:</span>
+                  <span>Tone: <strong>{coaching.tone}</strong></span>
+                  <span>Empathy: <strong>{coaching.empathy}</strong></span>
+                  <span style={{ flexBasis: "100%", color: "#555", marginTop: 2 }}>💡 {coaching.suggestion}</span>
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {/* Rewrite suggestion */}
+          {rewriteSuggestion && !crisis && !debrief && (
+            <div style={{
+              width: "100%",
+              background: "#e8f5e9",
+              border: "1px solid #a5d6a7",
+              borderRadius: 8,
+              padding: "10px 14px",
+              fontSize: "0.85rem",
+              color: "#1b5e20",
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+            }}>
+              <span style={{ fontWeight: 600 }}>Suggested rewrite:</span>
+              <span style={{ fontStyle: "italic" }}>&ldquo;{rewriteSuggestion}&rdquo;</span>
+              <button
+                onClick={() => { setInput(rewriteSuggestion); setRewriteSuggestion(null); inputRef.current?.focus(); }}
+                style={{
+                  alignSelf: "flex-start",
+                  background: "#43a047",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 6,
+                  padding: "4px 12px",
+                  fontSize: "0.8rem",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Use this
+              </button>
+            </div>
+          )}
+
           <div style={{ display: "flex", gap: 8, width: "100%", alignItems: "flex-end" }}>
             <textarea
               value={input}
               ref={inputRef}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => { setInput(e.target.value); setRewriteSuggestion(null); }}
               onKeyDown={onKeyDown}
               placeholder={crisis || debrief ? "Session has ended." : "Respond to the scenario…"}
               rows={1}
@@ -674,6 +794,26 @@ export default function Roleplay() {
                 {isListening ? <>⏹ Stop</> : <>🎤</>}
               </button>
             )}
+            <button
+              onClick={handleRewrite}
+              disabled={!input.trim() || rewriteLoading || !!crisis || !!debrief}
+              title="Suggest a calmer rephrasing"
+              style={{
+                padding: "0 12px",
+                height: 40,
+                borderRadius: 8,
+                border: "1px solid #43a047",
+                background: "white",
+                color: "#43a047",
+                cursor: "pointer",
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                flexShrink: 0,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {rewriteLoading ? "…" : "Improve"}
+            </button>
             <button
               className="send-btn"
               onClick={send}
