@@ -18,6 +18,7 @@ export default function App() {
   return (
     <Router>
       <Navbar />
+      <div id="main-content">
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/chatbot" element={<Chatbot />} />
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/blogs/:id" element={<BlogView />} />
         <Route path="/blogs/:id/edit" element={<BlogEdit />} />
       </Routes>
+      </div>
       <div style={{ marginTop: 32 }}>
         <AIDisclaimer />
       </div>

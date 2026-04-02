@@ -161,6 +161,7 @@ export default function Chatbot() {
   const inFlightRef = useRef(null);
   const recognitionRef = useRef(null);
   const bottomRef = useRef(null);
+  const inputRef = useRef(null);
 
   const location = useLocation();
   const CHAT_PERSIST_KEY = "pb_chat_session";
@@ -348,6 +349,7 @@ export default function Chatbot() {
         setIsTyping(false);
         setIsSending(false);
         inFlightRef.current = null;
+        inputRef.current?.focus();
       }
     }
   };
@@ -405,7 +407,7 @@ export default function Chatbot() {
         </header>
 
         <div className="chat-window">
-          <div className="messages">
+          <div className="messages" role="log" aria-live="polite" aria-label="Conversation messages">
             {messages.map((m, i) => m.sender === "crisis" ? (
               <CrisisCard key={m.id || i} />
             ) : (
@@ -479,6 +481,7 @@ export default function Chatbot() {
           <div style={{ display: "flex", gap: 8, width: "100%", alignItems: "flex-end" }}>
             <textarea
               value={input}
+              ref={inputRef}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder="Describe your situation..."

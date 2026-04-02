@@ -377,6 +377,57 @@ body,
 }
 
 /* =======================================
+   SKIP-TO-CONTENT LINK
+======================================= */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 12px;
+  background: #1a237e;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 0 0 8px 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  z-index: 9999;
+  text-decoration: none;
+  transition: top 0.15s;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* =======================================
+   FONT SIZE SCALING
+======================================= */
+body[data-font-size="large"] {
+  font-size: 18px;
+}
+
+body[data-font-size="x-large"] {
+  font-size: 21px;
+}
+
+body[data-font-size="large"] .bubble,
+body[data-font-size="large"] .chat-input,
+body[data-font-size="large"] .nav-button,
+body[data-font-size="large"] .send-btn,
+body[data-font-size="large"] p,
+body[data-font-size="large"] li {
+  font-size: 1.05rem;
+}
+
+body[data-font-size="x-large"] .bubble,
+body[data-font-size="x-large"] .chat-input,
+body[data-font-size="x-large"] .nav-button,
+body[data-font-size="x-large"] .send-btn,
+body[data-font-size="x-large"] p,
+body[data-font-size="x-large"] li {
+  font-size: 1.2rem;
+}
+
+/* =======================================
    HAMBURGER BUTTON (hidden on desktop)
 ======================================= */
 .nav-hamburger {

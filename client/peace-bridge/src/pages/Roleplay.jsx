@@ -145,6 +145,7 @@ export default function Roleplay() {
   const [micError, setMicError] = useState("");
   const recognitionRef = useRef(null);
   const bottomRef = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     const DIFFICULTY_ORDER = { beginner: 0, intermediate: 1, advanced: 2 };
@@ -270,6 +271,7 @@ export default function Roleplay() {
       ]);
     } finally {
       setIsTyping(false);
+      inputRef.current?.focus();
     }
   };
 
@@ -552,7 +554,7 @@ export default function Roleplay() {
         </header>
 
         <div className="chat-window">
-          <div className="messages">
+          <div className="messages" role="log" aria-live="polite" aria-label="Roleplay conversation messages">
             {messages.map((m, i) => (
               <div
                 key={i}
@@ -636,6 +638,7 @@ export default function Roleplay() {
           <div style={{ display: "flex", gap: 8, width: "100%", alignItems: "flex-end" }}>
             <textarea
               value={input}
+              ref={inputRef}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder={crisis || debrief ? "Session has ended." : "Respond to the scenario…"}
