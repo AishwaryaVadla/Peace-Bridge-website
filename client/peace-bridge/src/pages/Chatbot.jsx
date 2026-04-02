@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import "../components/Chatbot.css";
 import { detectEmotion } from "../utils/ruleEngine";
 import { sendChat, sendSessionSummary } from "../utils/chatbotAPI";
@@ -162,7 +162,26 @@ export default function Chatbot() {
   const recognitionRef = useRef(null);
   const bottomRef = useRef(null);
 
+  const location = useLocation();
   const CHAT_PERSIST_KEY = "pb_chat_session";
+
+  // If arriving from Learning Hub "Practice" button, seed the first bot message
+  useEffect(() => {
+    const { practiceSkill, practicePrompt } = location.state || {};
+    if (practiceSkill && practicePrompt) {
+      sessionStorage.removeItem(CHAT_PERSIST_KEY);
+      setMessages([
+        {
+          sender: "bot",
+          text: `🎯 Practicing: **${practiceSkill}**\n\n${practicePrompt}`,
+          meta: {},
+        },
+      ]);
+      // Clear state so refreshing doesn't re-trigger
+      window.history.replaceState({}, "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Restore conversation if user navigated away (e.g. to mindfulness) and came back
   useEffect(() => {
