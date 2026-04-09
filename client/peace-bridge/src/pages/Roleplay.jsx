@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { getScenarios, startRoleplay, startCustomRoleplay, sendRoleplay, endRoleplay, getCoaching, rewriteMessage } from "../utils/roleplayAPI";
 
 // ── Voice helpers ─────────────────────────────────────────────────────────────
@@ -116,6 +117,7 @@ function ScoreBar({ score }) {
 }
 
 export default function Roleplay() {
+  const navigate = useNavigate();
   const [scenarios, setScenarios] = useState([]);
   const [loadingScenarios, setLoadingScenarios] = useState(true);
   const [scenarioError, setScenarioError] = useState("");
@@ -571,28 +573,43 @@ export default function Roleplay() {
           </div>
         </div>
 
-        {/* Custom scenario entry point */}
-        <div
-          style={{ marginTop: 24, cursor: "pointer" }}
-          onClick={() => { setStartError(""); setCustomMode(true); }}
-        >
-          <div className="card" style={{
-            border: "2px dashed #7986cb",
-            background: "#f5f5ff",
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-            padding: "18px 24px",
-          }}>
-            <span style={{ fontSize: "2rem" }}>✏️</span>
-            <div>
-              <p style={{ margin: 0, fontWeight: 700, color: "#3f51b5", fontSize: "1rem" }}>Custom Scenario</p>
-              <p className="subtle" style={{ margin: "3px 0 0", fontSize: "0.88rem" }}>
-                Describe your own conflict — the AI plays the other person, tailored to your situation.
-              </p>
+        {/* Mode cards row */}
+        <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 12 }}>
+
+          {/* Custom scenario */}
+          <div style={{ cursor: "pointer" }} onClick={() => { setStartError(""); setCustomMode(true); }}>
+            <div className="card" style={{
+              border: "2px dashed #7986cb", background: "#f5f5ff",
+              display: "flex", alignItems: "center", gap: 16, padding: "18px 24px",
+            }}>
+              <span style={{ fontSize: "2rem" }}>✏️</span>
+              <div>
+                <p style={{ margin: 0, fontWeight: 700, color: "#3f51b5", fontSize: "1rem" }}>Custom Scenario</p>
+                <p className="subtle" style={{ margin: "3px 0 0", fontSize: "0.88rem" }}>
+                  Describe your own conflict — the AI plays the other person, tailored to your situation.
+                </p>
+              </div>
+              <span style={{ marginLeft: "auto", color: "#7986cb", fontSize: "1.3rem" }}>›</span>
             </div>
-            <span style={{ marginLeft: "auto", color: "#7986cb", fontSize: "1.3rem" }}>›</span>
           </div>
+
+          {/* Mediator mode */}
+          <div style={{ cursor: "pointer" }} onClick={() => navigate("/mediator")}>
+            <div className="card" style={{
+              border: "2px dashed #e65100", background: "#fff8f5",
+              display: "flex", alignItems: "center", gap: 16, padding: "18px 24px",
+            }}>
+              <span style={{ fontSize: "2rem" }}>⚖️</span>
+              <div>
+                <p style={{ margin: 0, fontWeight: 700, color: "#e65100", fontSize: "1rem" }}>Mediator Mode</p>
+                <p className="subtle" style={{ margin: "3px 0 0", fontSize: "0.88rem" }}>
+                  Two AI parties bring their conflict to your table. You mediate. Control who's in the room.
+                </p>
+              </div>
+              <span style={{ marginLeft: "auto", color: "#e65100", fontSize: "1.3rem" }}>›</span>
+            </div>
+          </div>
+
         </div>
 
         {startError && <div className="alert" style={{ marginTop: 16 }}>{startError}</div>}
