@@ -154,6 +154,7 @@ export default function Chatbot() {
   const [summary, setSummary] = useState("");
   const [summaryError, setSummaryError] = useState("");
   const [sessionId, setSessionId] = useState(null);
+  const [slowResponse, setSlowResponse] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [micError, setMicError] = useState("");
@@ -278,7 +279,10 @@ export default function Chatbot() {
     }
 
     setIsTyping(true);
+    setSlowResponse(false);
     setMessages((prev) => [...prev, userMsg]);
+
+    const slowTimer = setTimeout(() => setSlowResponse(true), 20000);
 
     try {
       const { text: assistantText, data } = await sendChat(text, sessionId);
@@ -343,8 +347,10 @@ export default function Chatbot() {
         ]);
       }
     } finally {
+      clearTimeout(slowTimer);
       if (inFlightRef.current === reqId) {
         setIsTyping(false);
+        setSlowResponse(false);
         setIsSending(false);
         inFlightRef.current = null;
         inputRef.current?.focus();
@@ -444,8 +450,15 @@ export default function Chatbot() {
             {isTyping && (
               <div className="bubble-row bubble-row-bot">
                 <div className="avatar bot-avatar">🕊️</div>
-                <div className="bubble bubble-bot typing">
-                  <div className="dots"><span></span><span></span><span></span></div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div className="bubble bubble-bot typing">
+                    <div className="dots"><span></span><span></span><span></span></div>
+                  </div>
+                  {slowResponse && (
+                    <span style={{ fontSize: "0.78rem", color: "#888", fontStyle: "italic", paddingLeft: 4 }}>
+                      ⏳ Still thinking — this one is taking a little longer…
+                    </span>
+                  )}
                 </div>
               </div>
             )}

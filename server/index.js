@@ -45,4 +45,8 @@ app.get("/*path", (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// Allow up to 5 minutes for long Ollama responses
+server.timeout = 5 * 60 * 1000;
+server.keepAliveTimeout = 5 * 60 * 1000 + 1000;

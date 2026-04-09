@@ -1,6 +1,11 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+const CHAT_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes — covers long voice / complex messages
+
 export async function sendChat(message, sessionId = null) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
+
   try {
     const res = await fetch(`${API_BASE}/api/chat`, {
       method: "POST",
@@ -9,6 +14,7 @@ export async function sendChat(message, sessionId = null) {
         session_id: sessionId || null,
         message: message || "",
       }),
+      signal: controller.signal,
     });
 
     let data = {};
@@ -31,10 +37,15 @@ export async function sendChat(message, sessionId = null) {
     return { text, data };
   } catch (err) {
     console.error("sendChat error:", err);
+    const timedOut = err.name === "AbortError";
     return {
-      text: "I’m sorry, I had trouble responding just now. Could you try again?",
-      data: { debug_mode: "CLIENT_FALLBACK" },
+      text: timedOut
+        ? "That took longer than expected — the response may still be processing. Please try sending a shorter message or try again in a moment."
+        : "I’m sorry, I had trouble responding just now. Could you try again?",
+      data: { debug_mode: timedOut ? "CLIENT_TIMEOUT" : "CLIENT_FALLBACK" },
     };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
