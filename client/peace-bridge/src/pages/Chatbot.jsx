@@ -480,8 +480,8 @@ export default function Chatbot() {
           </div>
         )}
 
-        <footer className="chat-input-area" style={{ flexDirection: "column", gap: 8 }}>
-          <div style={{ display: "flex", gap: 8, width: "100%", alignItems: "flex-end" }}>
+        <footer className="chat-input-area" style={{ flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", gap: 8, width: "100%", alignItems: "center" }}>
             <textarea
               value={input}
               ref={inputRef}
@@ -491,7 +491,9 @@ export default function Chatbot() {
               rows={1}
               className="chat-input"
               aria-label="Type your mediation message"
+              style={{ flex: 1, resize: "none", height: 42 }}
             />
+
             {SpeechRecognitionAPI && (
               <button
                 onClick={toggleMic}
@@ -500,38 +502,28 @@ export default function Chatbot() {
                 aria-pressed={isListening}
                 title={isListening ? "Stop listening" : "Speak your message"}
                 style={{
-                  padding: "0 12px",
-                  height: 40,
-                  borderRadius: 8,
-                  border: `1px solid ${isListening ? "#f44336" : "#3f51b5"}`,
+                  height: 42, width: 42, borderRadius: 8, flexShrink: 0,
+                  border: `1px solid ${isListening ? "#f44336" : "#c5cae9"}`,
                   background: isListening ? "#f44336" : "white",
-                  color: isListening ? "white" : "#3f51b5",
-                  cursor: "pointer",
-                  fontSize: isListening ? "0.78rem" : "1.1rem",
-                  fontWeight: 600,
-                  flexShrink: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  whiteSpace: "nowrap",
+                  color: isListening ? "white" : "#555",
+                  cursor: "pointer", fontSize: "1rem",
+                  display: "flex", alignItems: "center", justifyContent: "center",
                 }}
               >
-                {isListening ? <>⏹ Stop</> : <>🎤</>}
+                {isListening ? "⏹" : "🎤"}
               </button>
             )}
-            <button className="send-btn" onClick={send} disabled={isSending} aria-label="Send message">Send ➤</button>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-            {isListening ? (
-              <span style={{ fontSize: "0.8rem", color: "#f44336", display: "flex", alignItems: "center", gap: 5 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f44336", display: "inline-block", animation: "pulse 1s infinite" }} />
-                Listening…
-              </span>
-            ) : micError ? (
-              <span style={{ fontSize: "0.8rem", color: "#c62828" }}>⚠️ {micError}</span>
-            ) : (
-              <span />
-            )}
+
+            <button
+              className="send-btn"
+              onClick={send}
+              disabled={isSending}
+              aria-label="Send message"
+              style={{ height: 42, flexShrink: 0 }}
+            >
+              Send ➤
+            </button>
+
             <button
               onClick={() => { const next = !voiceEnabled; setVoiceEnabled(next); if (!next) stopSpeaking(); }}
               title={voiceEnabled ? "Mute voice replies" : "Unmute voice replies"}
@@ -549,6 +541,19 @@ export default function Chatbot() {
               {voiceEnabled ? "🔊" : "🔇"}
             </button>
           </div>
+
+          {(isListening || micError) && (
+            <div style={{ fontSize: "0.78rem", paddingLeft: 2 }}>
+              {isListening ? (
+                <span style={{ color: "#f44336", display: "flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#f44336", display: "inline-block", animation: "pulse 1s infinite" }} />
+                  Listening…
+                </span>
+              ) : (
+                <span style={{ color: "#c62828" }}>⚠️ {micError}</span>
+              )}
+            </div>
+          )}
         </footer>
       </div>
     </div>
