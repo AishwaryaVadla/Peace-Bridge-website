@@ -2,6 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { startMediation, sendMediatorMessage, endMediation } from "../utils/mediatorAPI";
 
+const SpeechRecognitionAPI =
+  typeof window !== "undefined"
+    ? window.SpeechRecognition || window.webkitSpeechRecognition
+    : null;
+
 const DISPUTE_TYPES = [
   "Family",
   "Marital",
@@ -167,12 +172,70 @@ export default function MediatorMode() {
   const [debrief, setDebrief] = useState(null);
   const [debriefError, setDebriefError] = useState("");
 
+  // ── Voice ────────────────────────────────────────────────────────────────────
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [isListening, setIsListening] = useState(false);
+  const [micError, setMicError] = useState("");
+  const recognitionRef = useRef(null);
+  const speakingRef = useRef(false);
+
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping, debrief]);
+
+  // Stop speech on unmount
+  useEffect(() => () => { window.speechSynthesis?.cancel(); }, []);
+
+  // ── Voice helpers ─────────────────────────────────────────────────────────────
+  const stopSpeaking = () => {
+    window.speechSynthesis?.cancel();
+    speakingRef.current = false;
+  };
+
+  // Speak an array of { text, pitch } entries one after another
+  const speakSequential = (queue) => {
+    if (!voiceEnabled || !window.speechSynthesis || !queue.length) return;
+    stopSpeaking();
+    let idx = 0;
+    const next = () => {
+      if (idx >= queue.length) { speakingRef.current = false; return; }
+      const { text, pitch } = queue[idx++];
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.pitch = pitch;
+      utt.rate = 0.95;
+      utt.onend = next;
+      utt.onerror = next;
+      speakingRef.current = true;
+      window.speechSynthesis.speak(utt);
+    };
+    next();
+  };
+
+  const toggleMic = () => {
+    if (!SpeechRecognitionAPI) return;
+    if (isListening) { recognitionRef.current?.stop(); setIsListening(false); return; }
+    setMicError("");
+    const rec = new SpeechRecognitionAPI();
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.lang = "en-US";
+    rec.onresult = (e) => {
+      const transcript = e.results[0]?.[0]?.transcript || "";
+      setInput((prev) => (prev ? prev + " " + transcript : transcript));
+      setIsListening(false);
+    };
+    rec.onerror = (e) => {
+      setMicError(e.error === "not-allowed" ? "Mic access denied." : "Could not hear you.");
+      setIsListening(false);
+    };
+    rec.onend = () => setIsListening(false);
+    recognitionRef.current = rec;
+    rec.start();
+    setIsListening(true);
+  };
 
   // Auto-start when arriving from a preset scenario via "Act as Mediator"
   useEffect(() => {
@@ -259,7 +322,14 @@ export default function MediatorMode() {
       const newMsgs = [];
       if (data.party_a_reply) newMsgs.push({ type: "party_a", text: data.party_a_reply, name: partyA?.name });
       if (data.party_b_reply) newMsgs.push({ type: "party_b", text: data.party_b_reply, name: partyB?.name });
-      if (newMsgs.length) setMessages((prev) => [...prev, ...newMsgs]);
+      if (newMsgs.length) {
+        setMessages((prev) => [...prev, ...newMsgs]);
+        // Speak replies sequentially: Party A (pitch 1.0) then Party B (pitch 1.2)
+        const ttsQueue = [];
+        if (data.party_a_reply) ttsQueue.push({ text: data.party_a_reply, pitch: 1.0 });
+        if (data.party_b_reply) ttsQueue.push({ text: data.party_b_reply, pitch: 1.2 });
+        speakSequential(ttsQueue);
+      }
     } catch (e) {
       setChatError(e.message || "Something went wrong. Please try again.");
     } finally {
@@ -576,26 +646,81 @@ export default function MediatorMode() {
         </div>
 
         {/* Input */}
-        <footer className="chat-input-area">
-          <textarea
-            value={input}
-            ref={inputRef}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder={debrief ? "Session has ended." : `Type as mediator — speaking to ${roomLabel().toLowerCase()}…`}
-            rows={1}
-            className="chat-input"
-            disabled={!!debrief}
-            aria-label="Type your mediator message"
-          />
-          <button
-            className="send-btn"
-            onClick={handleSend}
-            disabled={isTyping || !!debrief}
-            aria-label="Send message"
-          >
-            Send ➤
-          </button>
+        <footer className="chat-input-area" style={{ flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, width: "100%", alignItems: "center" }}>
+            <textarea
+              value={input}
+              ref={inputRef}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKeyDown}
+              placeholder={debrief ? "Session has ended." : `Type as mediator — speaking to ${roomLabel().toLowerCase()}…`}
+              rows={1}
+              className="chat-input"
+              disabled={!!debrief}
+              aria-label="Type your mediator message"
+              style={{ flex: 1, resize: "none", height: 42 }}
+            />
+
+            {SpeechRecognitionAPI && (
+              <button
+                onClick={toggleMic}
+                disabled={!!debrief}
+                aria-label={isListening ? "Stop recording" : "Speak your message"}
+                aria-pressed={isListening}
+                title={isListening ? "Stop listening" : "Speak your message"}
+                style={{
+                  height: 42, width: 42, borderRadius: 8, flexShrink: 0,
+                  border: `1px solid ${isListening ? "#f44336" : "#c5cae9"}`,
+                  background: isListening ? "#f44336" : "white",
+                  color: isListening ? "white" : "#555",
+                  cursor: "pointer", fontSize: "1rem",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                {isListening ? "⏹" : "🎤"}
+              </button>
+            )}
+
+            <button
+              className="send-btn"
+              onClick={handleSend}
+              disabled={isTyping || !!debrief}
+              aria-label="Send message"
+              style={{ height: 42, flexShrink: 0 }}
+            >
+              Send ➤
+            </button>
+
+            <button
+              onClick={() => { const next = !voiceEnabled; setVoiceEnabled(next); if (!next) stopSpeaking(); }}
+              title={voiceEnabled ? "Mute party voices" : "Unmute party voices"}
+              aria-label={voiceEnabled ? "Mute party voices" : "Unmute party voices"}
+              aria-pressed={voiceEnabled}
+              style={{
+                height: 42, width: 42, borderRadius: 8, flexShrink: 0,
+                border: `1px solid ${voiceEnabled ? "#3f51b5" : "#c5cae9"}`,
+                background: voiceEnabled ? "#3f51b5" : "white",
+                color: voiceEnabled ? "white" : "#aaa",
+                cursor: "pointer", fontSize: "1rem",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              {voiceEnabled ? "🔊" : "🔇"}
+            </button>
+          </div>
+
+          {(isListening || micError) && (
+            <div style={{ fontSize: "0.78rem", paddingLeft: 2 }}>
+              {isListening ? (
+                <span style={{ color: "#f44336", display: "flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#f44336", display: "inline-block", animation: "pulse 1s infinite" }} />
+                  Listening…
+                </span>
+              ) : (
+                <span style={{ color: "#c62828" }}>⚠️ {micError}</span>
+              )}
+            </div>
+          )}
         </footer>
 
       </div>
