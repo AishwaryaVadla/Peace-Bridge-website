@@ -948,15 +948,22 @@ export default function Roleplay() {
               Send ➤
             </button>
 
-            <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "0.8rem", color: "#666", cursor: "pointer", userSelect: "none", flexShrink: 0, whiteSpace: "nowrap" }}>
-              <input
-                type="checkbox"
-                checked={voiceEnabled}
-                onChange={(e) => { setVoiceEnabled(e.target.checked); if (!e.target.checked) stopSpeaking(); }}
-                style={{ accentColor: "#3f51b5" }}
-              />
-              🔊
-            </label>
+            <button
+              onClick={() => { const next = !voiceEnabled; setVoiceEnabled(next); if (!next) stopSpeaking(); }}
+              title={voiceEnabled ? "Mute voice replies" : "Unmute voice replies"}
+              aria-label={voiceEnabled ? "Mute voice replies" : "Unmute voice replies"}
+              aria-pressed={voiceEnabled}
+              style={{
+                height: 42, width: 42, borderRadius: 8, flexShrink: 0,
+                border: `1px solid ${voiceEnabled ? "#3f51b5" : "#c5cae9"}`,
+                background: voiceEnabled ? "#3f51b5" : "white",
+                color: voiceEnabled ? "white" : "#aaa",
+                cursor: "pointer", fontSize: "1rem",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              {voiceEnabled ? "🔊" : "🔇"}
+            </button>
           </div>
 
           {(isListening || micError) && (
