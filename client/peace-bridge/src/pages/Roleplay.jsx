@@ -505,13 +505,26 @@ export default function Roleplay() {
               </div>
             </div>
           ) : (
-            <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+            <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <button
                 className="send-btn"
                 style={{ background: "white", color: "#3f51b5", border: "1px solid #3f51b5" }}
                 onClick={() => { setPendingScenario(null); setStartError(""); }}
               >
                 ← Back
+              </button>
+              <button
+                className="send-btn"
+                style={{ background: "#fff8f5", color: "#e65100", border: "1px solid #e65100" }}
+                onClick={() => navigate("/mediator", {
+                  state: {
+                    disputeType: pendingScenario.category || "Other",
+                    disputeDetails: customContext.trim() || pendingScenario.context,
+                    autoStart: true,
+                  }
+                })}
+              >
+                ⚖️ Act as Mediator
               </button>
               <button className="send-btn" onClick={confirmStart}>
                 {customContext.trim() ? "Start with my context" : "Start with default context"}

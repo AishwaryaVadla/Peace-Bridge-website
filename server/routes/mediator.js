@@ -79,6 +79,7 @@ Return ONLY valid JSON, no markdown:
       const setupPrompt = `You are setting up a mediation training session for a conflict resolution platform.
 
 Dispute type: ${dispute_type}
+${req.body.dispute_details ? `Scenario context: ${req.body.dispute_details}` : ""}
 
 Create two realistic parties for this mediation. Each party should have a genuine grievance and a distinct emotional state.
 

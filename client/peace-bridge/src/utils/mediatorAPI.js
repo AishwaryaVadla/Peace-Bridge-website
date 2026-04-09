@@ -1,6 +1,6 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-export async function startMediation(disputeType, partyAInput = null, partyBInput = null) {
+export async function startMediation(disputeType, partyAInput = null, partyBInput = null, disputeDetails = "") {
   const res = await fetch(`${API_BASE}/api/mediator/start`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -8,6 +8,7 @@ export async function startMediation(disputeType, partyAInput = null, partyBInpu
       dispute_type: disputeType,
       party_a_input: partyAInput,
       party_b_input: partyBInput,
+      dispute_details: disputeDetails,
     }),
   });
   if (!res.ok) {

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { startMediation, sendMediatorMessage, endMediation } from "../utils/mediatorAPI";
 
 const DISPUTE_TYPES = [
@@ -135,9 +135,11 @@ function DebriefCard({ debrief, onReset }) {
 
 export default function MediatorMode() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // ── Setup state ──────────────────────────────────────────────────────────────
-  const [disputeType, setDisputeType] = useState("Family");
+  const incomingState = location.state || {};
+  const [disputeType, setDisputeType] = useState(incomingState.disputeType || "Family");
   const [isStarting, setIsStarting] = useState(false);
   const [setupError, setSetupError] = useState("");
   const [formA, setFormA] = useState({ name: "", role: "", story: "" });
@@ -171,6 +173,30 @@ export default function MediatorMode() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping, debrief]);
+
+  // Auto-start when arriving from a preset scenario via "Act as Mediator"
+  useEffect(() => {
+    if (incomingState.autoStart && !sessionId) {
+      setIsStarting(true);
+      startMediation(incomingState.disputeType || "Other", null, null, incomingState.disputeDetails || "")
+        .then((data) => {
+          setSessionId(data.session_id);
+          setPartyA(data.party_a);
+          setPartyB(data.party_b);
+          setDisputeSummary(data.dispute_summary || "");
+          setMessages([
+            { type: "system", text: `Mediation session started: ${data.dispute_summary || incomingState.disputeType}` },
+            { type: "party_a", text: data.party_a.opening, name: data.party_a.name },
+            { type: "party_b", text: data.party_b.opening, name: data.party_b.name },
+          ]);
+          // Clear navigation state so refresh doesn't re-trigger
+          window.history.replaceState({}, "");
+        })
+        .catch((e) => setSetupError(e.message || "Failed to start session."))
+        .finally(() => setIsStarting(false));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleParty = (party) => {
     setActiveParties((prev) => {
@@ -279,6 +305,22 @@ export default function MediatorMode() {
 
   // ── SETUP SCREEN ──────────────────────────────────────────────────────────────
   if (!sessionId) {
+    // Loading state when auto-starting from a preset scenario
+    if (isStarting) {
+      return (
+        <div className="page" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 300 }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ display: "inline-flex", gap: 8, marginBottom: 16 }}>
+              {[0, 0.15, 0.3].map((d, i) => (
+                <span key={i} style={{ width: 12, height: 12, borderRadius: "50%", background: "#5c6bc0", display: "inline-block", animation: "blink 1s infinite", animationDelay: `${d}s` }} />
+              ))}
+            </div>
+            <p style={{ color: "#3f51b5", fontWeight: 500 }}>Preparing your mediation session…</p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="page">
         <div className="pageHeader">
