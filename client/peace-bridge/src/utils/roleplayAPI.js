@@ -57,6 +57,20 @@ export async function endRoleplay(sessionId) {
   return res.json();
 }
 
+export async function startCustomRoleplay(customPrompt) {
+  const res = await fetch(`${API_BASE}/api/roleplay/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ custom_prompt: customPrompt }),
+  });
+  if (!res.ok) {
+    let detail = "";
+    try { detail = (await res.json()).error || ""; } catch {}
+    throw new Error(`HTTP ${res.status}${detail ? `: ${detail}` : ""}`);
+  }
+  return res.json();
+}
+
 export async function getCoaching(message, sessionId) {
   const res = await fetch(`${API_BASE}/api/roleplay/coaching`, {
     method: "POST",

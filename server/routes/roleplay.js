@@ -296,8 +296,45 @@ Return ONLY valid JSON, no markdown:
 // POST /api/roleplay/start
 router.post("/start", async (req, res) => {
   try {
-    const { scenario_id, custom_context } = req.body || {};
-    if (!scenario_id) return res.status(400).json({ error: "scenario_id is required" });
+    const { scenario_id, custom_context, custom_prompt } = req.body || {};
+
+    // ── Custom (free-form) scenario ────────────────────────────────────────────
+    if (!scenario_id && custom_prompt?.trim()) {
+      const desc = custom_prompt.trim();
+
+      const systemPrompt = `You are playing the opposing party in the following real-life conflict:
+
+"${desc}"
+
+Stay fully in character as the other person involved. Show the emotions, defensiveness, frustration, or concerns that person would naturally have. Do not be immediately cooperative. Do not break character or act like an AI assistant. Keep replies 2–4 sentences.`;
+
+      let starterMessage = "So — you wanted to talk. Fine. I'm listening.";
+      try {
+        const openerPrompt = `${systemPrompt}\n\nOpen the conversation as your character would — address the user directly based on the situation. 2–3 sentences, fully in character.`;
+        starterMessage = await chatComplete([{ role: "user", content: openerPrompt }], { temperature: 0.8 });
+      } catch { /* use fallback */ }
+
+      const initialMemory = { system_prompt: systemPrompt, custom_context: desc, is_custom: true };
+
+      const { data: session, error: sessErr } = await supabase
+        .from("sessions")
+        .insert({ mode: "roleplay", scenario_id: null, turn_count: 0, roleplay_memory: initialMemory })
+        .select()
+        .single();
+
+      if (sessErr) return res.status(500).json({ error: sessErr.message });
+
+      await supabase.from("session_messages").insert({
+        session_id: session.id,
+        role: "assistant",
+        content: starterMessage,
+      });
+
+      return res.json({ session_id: session.id, reply: starterMessage });
+    }
+
+    // ── Preset scenario ────────────────────────────────────────────────────────
+    if (!scenario_id) return res.status(400).json({ error: "scenario_id or custom_prompt is required" });
 
     const { data: scenario, error: scErr } = await supabase
       .from("scenarios")
@@ -309,7 +346,6 @@ router.post("/start", async (req, res) => {
 
     const hasCustomContext = custom_context && custom_context.trim().length > 0;
 
-    // If custom context provided, generate a personalized opener via LLM
     let starterMessage = scenario.starter_message;
     if (hasCustomContext) {
       try {
@@ -320,12 +356,10 @@ The user has provided this specific situation context: "${custom_context.trim()}
 Open the conversation as your character would, addressing the user's specific situation directly. Keep it to 2-3 sentences, stay fully in character.`;
         starterMessage = await chatComplete([{ role: "user", content: prompt }], { temperature: 0.8 });
       } catch {
-        // Fall back to default starter if LLM fails
         starterMessage = scenario.starter_message;
       }
     }
 
-    // Store custom_context in roleplay_memory so all future turns are aware of it
     const initialMemory = hasCustomContext
       ? { custom_context: custom_context.trim() }
       : null;
@@ -382,14 +416,22 @@ router.post("/", async (req, res) => {
     if (sessErr || !session) return res.status(404).json({ error: "Session not found" });
     if (session.mode !== "roleplay") return res.status(400).json({ error: "Not a roleplay session" });
 
-    // Fetch scenario separately
-    const { data: scenario, error: scErr } = await supabase
-      .from("scenarios")
-      .select("system_prompt")
-      .eq("id", session.scenario_id)
-      .single();
-
-    if (scErr || !scenario) return res.status(404).json({ error: "Scenario not found" });
+    // Fetch scenario — or use stored system prompt for custom sessions
+    let scenario;
+    if (session.scenario_id) {
+      const { data: sc, error: scErr } = await supabase
+        .from("scenarios")
+        .select("system_prompt")
+        .eq("id", session.scenario_id)
+        .single();
+      if (scErr || !sc) return res.status(404).json({ error: "Scenario not found" });
+      scenario = sc;
+    } else {
+      // Custom scenario — system prompt stored in session memory
+      const storedPrompt = session.roleplay_memory?.system_prompt;
+      if (!storedPrompt) return res.status(400).json({ error: "No system prompt found for custom session" });
+      scenario = { system_prompt: storedPrompt };
+    }
 
     const turnCount = (session.turn_count || 0) + 1;
     const emotionalState = detectEmotionalState(userText);
@@ -478,7 +520,9 @@ router.post("/end", async (req, res) => {
       .eq("id", session_id)
       .single();
 
-    let scenarioTitle = "Conflict Practice";
+    let scenarioTitle = session?.roleplay_memory?.is_custom
+      ? "Custom Scenario"
+      : "Conflict Practice";
     if (session?.scenario_id) {
       const { data: sc } = await supabase
         .from("scenarios")

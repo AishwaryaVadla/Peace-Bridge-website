@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { getScenarios, startRoleplay, sendRoleplay, endRoleplay, getCoaching, rewriteMessage } from "../utils/roleplayAPI";
+import { getScenarios, startRoleplay, startCustomRoleplay, sendRoleplay, endRoleplay, getCoaching, rewriteMessage } from "../utils/roleplayAPI";
 
 // ── Voice helpers ─────────────────────────────────────────────────────────────
 const SpeechRecognitionAPI =
@@ -123,6 +123,8 @@ export default function Roleplay() {
   const [selectedScenario, setSelectedScenario] = useState(null);
   const [pendingScenario, setPendingScenario] = useState(null); // setup screen
   const [customContext, setCustomContext] = useState("");
+  const [customMode, setCustomMode] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState("");
   const [activeDifficulty, setActiveDifficulty] = useState(null);
   const [sessionId, setSessionId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -344,7 +346,87 @@ export default function Roleplay() {
     setCoachingLoading(false);
     setRewriteSuggestion(null);
     setRewriteLoading(false);
+    setCustomMode(false);
+    setCustomPrompt("");
   };
+
+  // ── Custom scenario screen ───────────────────────────────────────────────────
+  if (customMode) {
+    const canStart = customPrompt.trim().length > 10;
+    return (
+      <div className="page">
+        <div className="pageHeader">
+          <div>
+            <h1>✏️ Custom Scenario</h1>
+            <p className="subtle">Describe any conflict — the AI will play the other person.</p>
+          </div>
+        </div>
+
+        {startError && <div className="alert">{startError}</div>}
+
+        <div className="card" style={{ maxWidth: 660, margin: "24px auto", padding: "28px 32px" }}>
+          <textarea
+            value={customPrompt}
+            onChange={(e) => setCustomPrompt(e.target.value)}
+            placeholder="Describe your situation freely… e.g. My manager keeps dismissing my ideas in team meetings and takes credit for my work. I want to confront them but they always deflect."
+            rows={6}
+            className="chat-input"
+            style={{ width: "100%", resize: "vertical", fontSize: "0.97rem", lineHeight: 1.65 }}
+            autoFocus
+          />
+          <p className="subtle" style={{ margin: "10px 0 20px", fontSize: "0.83rem" }}>
+            The more detail you give, the more realistic the AI character will be.
+          </p>
+
+          {isStarting ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#f0f3ff", border: "1px solid #c5cae9", borderRadius: 10, padding: "10px 18px" }}>
+              <div className="dots" style={{ display: "inline-flex", gap: 5 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#5c6bc0", display: "inline-block", animation: "blink 1s infinite" }} />
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#5c6bc0", display: "inline-block", animation: "blink 1s infinite", animationDelay: "0.15s" }} />
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#5c6bc0", display: "inline-block", animation: "blink 1s infinite", animationDelay: "0.3s" }} />
+              </div>
+              <span style={{ color: "#3f51b5", fontSize: "0.92rem", fontWeight: 500 }}>Building your scenario…</span>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+              <button
+                className="send-btn"
+                style={{ background: "white", color: "#3f51b5", border: "1px solid #3f51b5" }}
+                onClick={() => { setCustomMode(false); setCustomPrompt(""); setStartError(""); }}
+              >
+                ← Back
+              </button>
+              <button
+                className="send-btn"
+                onClick={async () => {
+                  setStartError("");
+                  setIsStarting(true);
+                  setMessages([]);
+                  setInput("");
+                  setCrisis(false);
+                  setDebrief(null);
+                  try {
+                    const data = await startCustomRoleplay(customPrompt.trim());
+                    setSessionId(data.session_id);
+                    setMessages([{ sender: "bot", text: data.reply }]);
+                    setSelectedScenario({ title: "Custom Scenario", context: customPrompt.trim(), isCustom: true });
+                    setCustomMode(false);
+                  } catch (e) {
+                    setStartError(e.message || "Failed to start. Please try again.");
+                  } finally {
+                    setIsStarting(false);
+                  }
+                }}
+                disabled={!canStart}
+              >
+                Start Role-Play ➤
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // ── Setup screen (between picker and chat) ───────────────────────────────────
   if (pendingScenario) {
@@ -486,6 +568,30 @@ export default function Roleplay() {
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        {/* Custom scenario entry point */}
+        <div
+          style={{ marginTop: 24, cursor: "pointer" }}
+          onClick={() => { setStartError(""); setCustomMode(true); }}
+        >
+          <div className="card" style={{
+            border: "2px dashed #7986cb",
+            background: "#f5f5ff",
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+            padding: "18px 24px",
+          }}>
+            <span style={{ fontSize: "2rem" }}>✏️</span>
+            <div>
+              <p style={{ margin: 0, fontWeight: 700, color: "#3f51b5", fontSize: "1rem" }}>Custom Scenario</p>
+              <p className="subtle" style={{ margin: "3px 0 0", fontSize: "0.88rem" }}>
+                Describe your own conflict — the AI plays the other person, tailored to your situation.
+              </p>
+            </div>
+            <span style={{ marginLeft: "auto", color: "#7986cb", fontSize: "1.3rem" }}>›</span>
           </div>
         </div>
 
