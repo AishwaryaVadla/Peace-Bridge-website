@@ -532,18 +532,22 @@ export default function Chatbot() {
             ) : (
               <span />
             )}
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.82rem", color: "#666", cursor: "pointer", userSelect: "none" }}>
-              <input
-                type="checkbox"
-                checked={voiceEnabled}
-                onChange={(e) => {
-                  setVoiceEnabled(e.target.checked);
-                  if (!e.target.checked) stopSpeaking();
-                }}
-                style={{ accentColor: "#3f51b5" }}
-              />
-              🔊 Voice replies
-            </label>
+            <button
+              onClick={() => { const next = !voiceEnabled; setVoiceEnabled(next); if (!next) stopSpeaking(); }}
+              title={voiceEnabled ? "Mute voice replies" : "Unmute voice replies"}
+              aria-label={voiceEnabled ? "Mute voice replies" : "Unmute voice replies"}
+              aria-pressed={voiceEnabled}
+              style={{
+                height: 42, width: 42, borderRadius: 8, flexShrink: 0,
+                border: `1px solid ${voiceEnabled ? "#3f51b5" : "#c5cae9"}`,
+                background: voiceEnabled ? "#3f51b5" : "white",
+                color: voiceEnabled ? "white" : "#aaa",
+                cursor: "pointer", fontSize: "1rem",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              {voiceEnabled ? "🔊" : "🔇"}
+            </button>
           </div>
         </footer>
       </div>
