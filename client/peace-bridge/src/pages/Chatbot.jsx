@@ -282,7 +282,7 @@ export default function Chatbot() {
     setSlowResponse(false);
     setMessages((prev) => [...prev, userMsg]);
 
-    const slowTimer = setTimeout(() => setSlowResponse(true), 20000);
+    const slowTimer = setTimeout(() => setSlowResponse(true), 10000);
 
     try {
       const { text: assistantText, data } = await sendChat(text, sessionId);
