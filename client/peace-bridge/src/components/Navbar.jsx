@@ -18,10 +18,10 @@ export default function Navbar() {
 
   return (
     <nav className="navbar">
-      <div className="nav-logo">
+      <Link to="/" className="nav-logo" style={{ textDecoration: "none", color: "inherit" }}>
         <img src={logo} alt="CPACT Lab" className="nav-logo-img small" />
         <h1>Peace Bridge</h1>
-      </div>
+      </Link>
 
       <button
         className={`nav-hamburger${open ? " is-open" : ""}`}
