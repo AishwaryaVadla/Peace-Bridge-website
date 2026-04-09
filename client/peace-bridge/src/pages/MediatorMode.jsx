@@ -36,6 +36,57 @@ function PartyAvatar({ name, color }) {
   );
 }
 
+const INPUT_STYLE = {
+  width: "100%", padding: "9px 12px", borderRadius: 8,
+  border: "1px solid #c5cae9", fontSize: "0.95rem",
+  background: "white", color: "#333", boxSizing: "border-box",
+};
+const LABEL_STYLE = { display: "block", fontWeight: 600, color: "#555", marginBottom: 6, fontSize: "0.88rem" };
+
+function PartyForm({ label, color, value, onChange }) {
+  return (
+    <div style={{ flex: 1, minWidth: 260 }}>
+      <div style={{
+        fontWeight: 700, fontSize: "0.82rem", textTransform: "uppercase",
+        letterSpacing: "0.06em", color, marginBottom: 12,
+        paddingBottom: 6, borderBottom: `2px solid ${color}`,
+      }}>
+        {label}
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <label style={LABEL_STYLE}>Name <span style={{ color: "#e53935" }}>*</span></label>
+        <input
+          type="text"
+          value={value.name}
+          onChange={(e) => onChange({ ...value, name: e.target.value })}
+          placeholder="e.g. Margaret"
+          style={INPUT_STYLE}
+        />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <label style={LABEL_STYLE}>Role in dispute <span style={{ color: "#888", fontWeight: 400 }}>(optional)</span></label>
+        <input
+          type="text"
+          value={value.role}
+          onChange={(e) => onChange({ ...value, role: e.target.value })}
+          placeholder="e.g. Mother, Tenant, Employee"
+          style={INPUT_STYLE}
+        />
+      </div>
+      <div>
+        <label style={LABEL_STYLE}>Their side of the story <span style={{ color: "#e53935" }}>*</span></label>
+        <textarea
+          value={value.story}
+          onChange={(e) => onChange({ ...value, story: e.target.value })}
+          placeholder="Describe their perspective, what happened, and what they want from this mediation…"
+          rows={4}
+          style={{ ...INPUT_STYLE, resize: "vertical", fontFamily: "inherit", lineHeight: 1.5 }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function DebriefCard({ debrief, onReset }) {
   if (!debrief) return null;
   return (
@@ -228,56 +279,6 @@ export default function MediatorMode() {
 
   // ── SETUP SCREEN ──────────────────────────────────────────────────────────────
   if (!sessionId) {
-    const inputStyle = {
-      width: "100%", padding: "9px 12px", borderRadius: 8,
-      border: "1px solid #c5cae9", fontSize: "0.95rem",
-      background: "white", color: "#333", boxSizing: "border-box",
-    };
-    const labelStyle = { display: "block", fontWeight: 600, color: "#555", marginBottom: 6, fontSize: "0.88rem" };
-
-    const PartyForm = ({ label, color, value, onChange }) => (
-      <div style={{ flex: 1, minWidth: 260 }}>
-        <div style={{
-          fontWeight: 700, fontSize: "0.82rem", textTransform: "uppercase",
-          letterSpacing: "0.06em", color, marginBottom: 12,
-          paddingBottom: 6, borderBottom: `2px solid ${color}`,
-        }}>
-          {label}
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <label style={labelStyle}>Name <span style={{ color: "#e53935" }}>*</span></label>
-          <input
-            type="text"
-            value={value.name}
-            onChange={(e) => onChange({ ...value, name: e.target.value })}
-            placeholder="e.g. Margaret"
-            style={inputStyle}
-          />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <label style={labelStyle}>Role in dispute <span style={{ color: "#888", fontWeight: 400 }}>(optional)</span></label>
-          <input
-            type="text"
-            value={value.role}
-            onChange={(e) => onChange({ ...value, role: e.target.value })}
-            placeholder="e.g. Mother, Tenant, Employee"
-            style={inputStyle}
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>Their side of the story <span style={{ color: "#e53935" }}>*</span></label>
-          <textarea
-            value={value.story}
-            onChange={(e) => onChange({ ...value, story: e.target.value })}
-            placeholder="Describe their perspective, what happened, and what they want from this mediation…"
-            rows={4}
-            className="chat-input"
-            style={{ width: "100%", resize: "vertical", fontSize: "0.93rem" }}
-          />
-        </div>
-      </div>
-    );
-
     return (
       <div className="page">
         <div className="pageHeader">
@@ -305,7 +306,7 @@ export default function MediatorMode() {
             <select
               value={disputeType}
               onChange={(e) => setDisputeType(e.target.value)}
-              style={{ ...inputStyle, cursor: "pointer" }}
+              style={{ ...INPUT_STYLE, cursor: "pointer" }}
             >
               {DISPUTE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
