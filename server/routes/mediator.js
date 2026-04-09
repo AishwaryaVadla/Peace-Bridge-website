@@ -25,13 +25,60 @@ function buildPartyContext(allMsgs, partyRole, isJoint, partyAName, partyBName) 
 
 router.post("/start", async (req, res) => {
   try {
-    const { dispute_type, dispute_details } = req.body || {};
+    const { dispute_type, party_a_input, party_b_input } = req.body || {};
     if (!dispute_type) return res.status(400).json({ error: "dispute_type is required" });
 
-    const setupPrompt = `You are setting up a mediation training session for a conflict resolution platform.
+    const hasManualInput =
+      party_a_input?.name && party_a_input?.story &&
+      party_b_input?.name && party_b_input?.story;
+
+    let partyAData, partyBData, disputeSummary;
+
+    if (hasManualInput) {
+      // ── User-provided party details ──────────────────────────────────────────
+      const genOpeningsPrompt = `You are setting up a mediation session. Based on each person's story, generate their opening statement to a professional mediator.
+
+Party 1: ${party_a_input.name} (${party_a_input.role || "party"})
+Their story: "${party_a_input.story}"
+
+Party 2: ${party_b_input.name} (${party_b_input.role || "party"})
+Their story: "${party_b_input.story}"
+
+Return ONLY valid JSON, no markdown:
+{
+  "party_a_opening": "How ${party_a_input.name} opens to the mediator — 2-3 sentences, in character, based on their story",
+  "party_a_emotional_state": "2-3 words describing their emotional state",
+  "party_b_opening": "How ${party_b_input.name} opens to the mediator — 2-3 sentences, in character, based on their story",
+  "party_b_emotional_state": "2-3 words describing their emotional state",
+  "dispute_summary": "One neutral sentence summarising the core conflict between them"
+}`;
+
+      const raw = await chatComplete([{ role: "user", content: genOpeningsPrompt }], { temperature: 0.8, num_predict: 500 });
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error("LLM did not return valid JSON");
+      const gen = JSON.parse(match[0]);
+
+      partyAData = {
+        name: party_a_input.name.trim(),
+        role: party_a_input.role?.trim() || "Party",
+        story: party_a_input.story.trim(),
+        emotional_state: gen.party_a_emotional_state || "concerned",
+        opening_statement: gen.party_a_opening,
+      };
+      partyBData = {
+        name: party_b_input.name.trim(),
+        role: party_b_input.role?.trim() || "Party",
+        story: party_b_input.story.trim(),
+        emotional_state: gen.party_b_emotional_state || "frustrated",
+        opening_statement: gen.party_b_opening,
+      };
+      disputeSummary = gen.dispute_summary || `${dispute_type} dispute between ${partyAData.name} and ${partyBData.name}`;
+
+    } else {
+      // ── Auto-generate both parties ────────────────────────────────────────────
+      const setupPrompt = `You are setting up a mediation training session for a conflict resolution platform.
 
 Dispute type: ${dispute_type}
-${dispute_details ? `Details: ${dispute_details}` : "Generate a realistic scenario for this dispute type."}
 
 Create two realistic parties for this mediation. Each party should have a genuine grievance and a distinct emotional state.
 
@@ -39,54 +86,54 @@ Return ONLY valid JSON, no markdown:
 {
   "party_a": {
     "name": "First name only",
-    "role": "Their relationship/role in the dispute (e.g. tenant, employee, sister)",
-    "position": "What they want resolved (1-2 sentences)",
-    "emotional_state": "2-3 words, e.g. frustrated and defensive",
-    "opening_statement": "How they open to the mediator, 2-3 sentences, in character, showing their grievance"
+    "role": "Their relationship/role in the dispute",
+    "story": "Their perspective on what happened (2-3 sentences)",
+    "emotional_state": "2-3 words",
+    "opening_statement": "How they open to the mediator, 2-3 sentences in character"
   },
   "party_b": {
     "name": "First name only (different from party_a)",
     "role": "Their relationship/role in the dispute",
-    "position": "What they want resolved (1-2 sentences)",
-    "emotional_state": "2-3 words, e.g. hurt but hopeful",
-    "opening_statement": "How they open to the mediator, 2-3 sentences, in character, showing their side"
+    "story": "Their perspective on what happened (2-3 sentences)",
+    "emotional_state": "2-3 words",
+    "opening_statement": "How they open to the mediator, 2-3 sentences in character"
   },
   "dispute_summary": "One neutral sentence describing the core conflict"
 }`;
 
-    const raw = await chatComplete(
-      [{ role: "user", content: setupPrompt }],
-      { temperature: 0.85, num_predict: 600 }
-    );
+      const raw = await chatComplete([{ role: "user", content: setupPrompt }], { temperature: 0.85, num_predict: 600 });
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error("LLM did not return valid JSON");
+      const parties = JSON.parse(match[0]);
 
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("LLM did not return valid JSON");
+      partyAData = parties.party_a;
+      partyBData = parties.party_b;
+      disputeSummary = parties.dispute_summary;
+    }
 
-    const parties = JSON.parse(match[0]);
+    // ── Build system prompts ──────────────────────────────────────────────────
+    const partyAPrompt = `You are ${partyAData.name} in a professional mediation session.
 
-    const partyAPrompt = `You are ${parties.party_a.name} in a professional mediation session.
+Your role: ${partyAData.role}
+Your story: ${partyAData.story}
+Your emotional state: ${partyAData.emotional_state}
 
-Your role: ${parties.party_a.role}
-Your position: ${parties.party_a.position}
-Your emotional state: ${parties.party_a.emotional_state}
+You are speaking with a trained mediator. Respond authentically — stay true to your story, show your feelings, your needs. You may mention the other party by name. Do NOT be immediately agreeable. Keep replies 2–4 sentences.`;
 
-You are speaking with a trained mediator. Respond authentically — show your feelings, your needs, your concerns. You may refer to the other party by name when relevant. Do NOT be immediately cooperative. Stay in character. Keep replies 2–4 sentences.`;
+    const partyBPrompt = `You are ${partyBData.name} in a professional mediation session.
 
-    const partyBPrompt = `You are ${parties.party_b.name} in a professional mediation session.
+Your role: ${partyBData.role}
+Your story: ${partyBData.story}
+Your emotional state: ${partyBData.emotional_state}
 
-Your role: ${parties.party_b.role}
-Your position: ${parties.party_b.position}
-Your emotional state: ${parties.party_b.emotional_state}
-
-You are speaking with a trained mediator. Respond authentically — show your feelings, your needs, your concerns. You may refer to the other party by name when relevant. Do NOT be immediately cooperative. Stay in character. Keep replies 2–4 sentences.`;
+You are speaking with a trained mediator. Respond authentically — stay true to your story, show your feelings, your needs. You may mention the other party by name. Do NOT be immediately agreeable. Keep replies 2–4 sentences.`;
 
     const memory = {
       mode: "mediator",
       dispute_type,
-      dispute_details: dispute_details || "",
-      dispute_summary: parties.dispute_summary,
-      party_a: { ...parties.party_a, system_prompt: partyAPrompt },
-      party_b: { ...parties.party_b, system_prompt: partyBPrompt },
+      dispute_summary: disputeSummary,
+      party_a: { ...partyAData, system_prompt: partyAPrompt },
+      party_b: { ...partyBData, system_prompt: partyBPrompt },
     };
 
     const { data: session, error: sessErr } = await supabase
@@ -98,25 +145,25 @@ You are speaking with a trained mediator. Respond authentically — show your fe
     if (sessErr) return res.status(500).json({ error: sessErr.message });
 
     await supabase.from("session_messages").insert([
-      { session_id: session.id, role: "party_a", content: parties.party_a.opening_statement },
-      { session_id: session.id, role: "party_b", content: parties.party_b.opening_statement },
+      { session_id: session.id, role: "party_a", content: partyAData.opening_statement },
+      { session_id: session.id, role: "party_b", content: partyBData.opening_statement },
     ]);
 
     return res.json({
       session_id: session.id,
       party_a: {
-        name: parties.party_a.name,
-        role: parties.party_a.role,
-        emotional_state: parties.party_a.emotional_state,
-        opening: parties.party_a.opening_statement,
+        name: partyAData.name,
+        role: partyAData.role,
+        emotional_state: partyAData.emotional_state,
+        opening: partyAData.opening_statement,
       },
       party_b: {
-        name: parties.party_b.name,
-        role: parties.party_b.role,
-        emotional_state: parties.party_b.emotional_state,
-        opening: parties.party_b.opening_statement,
+        name: partyBData.name,
+        role: partyBData.role,
+        emotional_state: partyBData.emotional_state,
+        opening: partyBData.opening_statement,
       },
-      dispute_summary: parties.dispute_summary,
+      dispute_summary: disputeSummary,
     });
   } catch (err) {
     console.error("/mediator/start error:", err);

@@ -87,9 +87,10 @@ export default function MediatorMode() {
 
   // ── Setup state ──────────────────────────────────────────────────────────────
   const [disputeType, setDisputeType] = useState("Family");
-  const [disputeDetails, setDisputeDetails] = useState("");
   const [isStarting, setIsStarting] = useState(false);
   const [setupError, setSetupError] = useState("");
+  const [formA, setFormA] = useState({ name: "", role: "", story: "" });
+  const [formB, setFormB] = useState({ name: "", role: "", story: "" });
 
   // ── Session state ────────────────────────────────────────────────────────────
   const [sessionId, setSessionId] = useState(null);
@@ -140,9 +141,17 @@ export default function MediatorMode() {
   // ── Start session ─────────────────────────────────────────────────────────────
   const handleStart = async () => {
     setSetupError("");
+    if (!formA.name.trim() || !formA.story.trim() || !formB.name.trim() || !formB.story.trim()) {
+      setSetupError("Please fill in both parties' names and their side of the story.");
+      return;
+    }
     setIsStarting(true);
     try {
-      const data = await startMediation(disputeType, disputeDetails.trim());
+      const data = await startMediation(
+        disputeType,
+        { name: formA.name.trim(), role: formA.role.trim(), story: formA.story.trim() },
+        { name: formB.name.trim(), role: formB.role.trim(), story: formB.story.trim() }
+      );
       setSessionId(data.session_id);
       setPartyA(data.party_a);
       setPartyB(data.party_b);
@@ -212,18 +221,69 @@ export default function MediatorMode() {
     setActiveParties(["a", "b"]);
     setDebrief(null); setDebriefError("");
     setEnding(false);
-    setDisputeDetails("");
+    setFormA({ name: "", role: "", story: "" });
+    setFormB({ name: "", role: "", story: "" });
     setSetupError("");
   };
 
   // ── SETUP SCREEN ──────────────────────────────────────────────────────────────
   if (!sessionId) {
+    const inputStyle = {
+      width: "100%", padding: "9px 12px", borderRadius: 8,
+      border: "1px solid #c5cae9", fontSize: "0.95rem",
+      background: "white", color: "#333", boxSizing: "border-box",
+    };
+    const labelStyle = { display: "block", fontWeight: 600, color: "#555", marginBottom: 6, fontSize: "0.88rem" };
+
+    const PartyForm = ({ label, color, value, onChange }) => (
+      <div style={{ flex: 1, minWidth: 260 }}>
+        <div style={{
+          fontWeight: 700, fontSize: "0.82rem", textTransform: "uppercase",
+          letterSpacing: "0.06em", color, marginBottom: 12,
+          paddingBottom: 6, borderBottom: `2px solid ${color}`,
+        }}>
+          {label}
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label style={labelStyle}>Name <span style={{ color: "#e53935" }}>*</span></label>
+          <input
+            type="text"
+            value={value.name}
+            onChange={(e) => onChange({ ...value, name: e.target.value })}
+            placeholder="e.g. Margaret"
+            style={inputStyle}
+          />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label style={labelStyle}>Role in dispute <span style={{ color: "#888", fontWeight: 400 }}>(optional)</span></label>
+          <input
+            type="text"
+            value={value.role}
+            onChange={(e) => onChange({ ...value, role: e.target.value })}
+            placeholder="e.g. Mother, Tenant, Employee"
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label style={labelStyle}>Their side of the story <span style={{ color: "#e53935" }}>*</span></label>
+          <textarea
+            value={value.story}
+            onChange={(e) => onChange({ ...value, story: e.target.value })}
+            placeholder="Describe their perspective, what happened, and what they want from this mediation…"
+            rows={4}
+            className="chat-input"
+            style={{ width: "100%", resize: "vertical", fontSize: "0.93rem" }}
+          />
+        </div>
+      </div>
+    );
+
     return (
       <div className="page">
         <div className="pageHeader">
           <div>
             <h1>🤝 Mediator Mode</h1>
-            <p className="subtle">You play the mediator. Two AI parties bring their conflict to your table.</p>
+            <p className="subtle">Fill in both parties' details and step in as the mediator.</p>
           </div>
           <button
             className="send-btn"
@@ -236,39 +296,26 @@ export default function MediatorMode() {
 
         {setupError && <div className="alert" style={{ marginTop: 16 }}>{setupError}</div>}
 
-        <div className="card" style={{ maxWidth: 560, margin: "28px auto", padding: "28px 32px" }}>
-          <div style={{ marginBottom: 20 }}>
+        <div className="card" style={{ maxWidth: 800, margin: "28px auto", padding: "28px 32px" }}>
+          {/* Dispute type */}
+          <div style={{ marginBottom: 28 }}>
             <label style={{ display: "block", fontWeight: 600, color: "#1a237e", marginBottom: 8 }}>
               Type of dispute
             </label>
             <select
               value={disputeType}
               onChange={(e) => setDisputeType(e.target.value)}
-              style={{
-                width: "100%", padding: "10px 14px", borderRadius: 8,
-                border: "1px solid #c5cae9", fontSize: "0.97rem",
-                background: "white", color: "#333", cursor: "pointer",
-              }}
+              style={{ ...inputStyle, cursor: "pointer" }}
             >
               {DISPUTE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
 
-          <div style={{ marginBottom: 28 }}>
-            <label style={{ display: "block", fontWeight: 600, color: "#1a237e", marginBottom: 8 }}>
-              Details about the dispute <span style={{ fontWeight: 400, color: "#888" }}>(optional)</span>
-            </label>
-            <textarea
-              value={disputeDetails}
-              onChange={(e) => setDisputeDetails(e.target.value)}
-              placeholder="e.g. Two siblings disagree over selling the family home after their parent passed away…"
-              rows={3}
-              className="chat-input"
-              style={{ width: "100%", resize: "vertical", fontSize: "0.95rem" }}
-            />
-            <p className="subtle" style={{ margin: "6px 0 0", fontSize: "0.82rem" }}>
-              Leave blank and the AI will generate a realistic scenario for the selected dispute type.
-            </p>
+          {/* Two-party form */}
+          <div style={{ display: "flex", gap: 28, flexWrap: "wrap", marginBottom: 28 }}>
+            <PartyForm label="Party 1" color="#3f51b5" value={formA} onChange={setFormA} />
+            <div style={{ width: 1, background: "#e8eaf6", flexShrink: 0, alignSelf: "stretch" }} />
+            <PartyForm label="Party 2" color="#e65100" value={formB} onChange={setFormB} />
           </div>
 
           {isStarting ? (
@@ -279,11 +326,16 @@ export default function MediatorMode() {
                 ))}
               </div>
               <span style={{ color: "#3f51b5", fontSize: "0.92rem", fontWeight: 500 }}>
-                Generating your mediation session…
+                Preparing your mediation session…
               </span>
             </div>
           ) : (
-            <button className="send-btn" style={{ width: "100%", justifyContent: "center" }} onClick={handleStart}>
+            <button
+              className="send-btn"
+              style={{ width: "100%", justifyContent: "center" }}
+              onClick={handleStart}
+              disabled={!formA.name.trim() || !formA.story.trim() || !formB.name.trim() || !formB.story.trim()}
+            >
               🤝 Start Mediation Session
             </button>
           )}

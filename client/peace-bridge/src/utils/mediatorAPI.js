@@ -1,10 +1,14 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-export async function startMediation(disputeType, disputeDetails = "") {
+export async function startMediation(disputeType, partyAInput = null, partyBInput = null) {
   const res = await fetch(`${API_BASE}/api/mediator/start`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dispute_type: disputeType, dispute_details: disputeDetails }),
+    body: JSON.stringify({
+      dispute_type: disputeType,
+      party_a_input: partyAInput,
+      party_b_input: partyBInput,
+    }),
   });
   if (!res.ok) {
     let detail = "";
