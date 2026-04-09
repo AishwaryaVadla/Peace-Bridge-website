@@ -891,7 +891,7 @@ export default function Roleplay() {
             </div>
           )}
 
-          <div style={{ display: "flex", gap: 8, width: "100%", alignItems: "flex-end" }}>
+          <div style={{ display: "flex", gap: 8, width: "100%", alignItems: "center" }}>
             <textarea
               value={input}
               ref={inputRef}
@@ -902,7 +902,9 @@ export default function Roleplay() {
               className="chat-input"
               disabled={!!crisis || !!debrief}
               aria-label="Type your response to the scenario"
+              style={{ flex: 1, resize: "none", height: 42 }}
             />
+
             {SpeechRecognitionAPI && (
               <button
                 onClick={toggleMic}
@@ -911,78 +913,64 @@ export default function Roleplay() {
                 aria-pressed={isListening}
                 title={isListening ? "Stop listening" : "Speak your response"}
                 style={{
-                  padding: "0 12px",
-                  height: 40,
-                  borderRadius: 8,
-                  border: `1px solid ${isListening ? "#f44336" : "#3f51b5"}`,
+                  height: 42, width: 42, borderRadius: 8, flexShrink: 0,
+                  border: `1px solid ${isListening ? "#f44336" : "#c5cae9"}`,
                   background: isListening ? "#f44336" : "white",
-                  color: isListening ? "white" : "#3f51b5",
-                  cursor: "pointer",
-                  fontSize: isListening ? "0.78rem" : "1.1rem",
-                  fontWeight: 600,
-                  flexShrink: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  whiteSpace: "nowrap",
+                  color: isListening ? "white" : "#555",
+                  cursor: "pointer", fontSize: "1rem",
+                  display: "flex", alignItems: "center", justifyContent: "center",
                 }}
               >
-                {isListening ? <>⏹ Stop</> : <>🎤</>}
+                {isListening ? "⏹" : "🎤"}
               </button>
             )}
+
             <button
               onClick={handleRewrite}
               disabled={!input.trim() || rewriteLoading || !!crisis || !!debrief}
               title="Suggest a calmer rephrasing"
               style={{
-                padding: "0 12px",
-                height: 40,
-                borderRadius: 8,
-                border: "1px solid #43a047",
-                background: "white",
-                color: "#43a047",
-                cursor: "pointer",
-                fontSize: "0.82rem",
-                fontWeight: 600,
-                flexShrink: 0,
-                whiteSpace: "nowrap",
+                height: 42, padding: "0 14px", borderRadius: 8, flexShrink: 0,
+                border: "1px solid #43a047", background: "white", color: "#43a047",
+                cursor: "pointer", fontSize: "0.82rem", fontWeight: 600, whiteSpace: "nowrap",
               }}
             >
-              {rewriteLoading ? "⏳ …" : "✨ Improve"}
+              {rewriteLoading ? "⏳" : "✨ Improve"}
             </button>
+
             <button
               className="send-btn"
               onClick={send}
               disabled={isTyping || !!crisis || !!debrief}
               aria-label="Send response"
+              style={{ height: 42, flexShrink: 0 }}
             >
               Send ➤
             </button>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-            {isListening ? (
-              <span style={{ fontSize: "0.8rem", color: "#f44336", display: "flex", alignItems: "center", gap: 5 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f44336", display: "inline-block", animation: "pulse 1s infinite" }} />
-                Listening…
-              </span>
-            ) : micError ? (
-              <span style={{ fontSize: "0.8rem", color: "#c62828" }}>⚠️ {micError}</span>
-            ) : (
-              <span />
-            )}
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.82rem", color: "#666", cursor: "pointer", userSelect: "none" }}>
+
+            <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "0.8rem", color: "#666", cursor: "pointer", userSelect: "none", flexShrink: 0, whiteSpace: "nowrap" }}>
               <input
                 type="checkbox"
                 checked={voiceEnabled}
-                onChange={(e) => {
-                  setVoiceEnabled(e.target.checked);
-                  if (!e.target.checked) stopSpeaking();
-                }}
+                onChange={(e) => { setVoiceEnabled(e.target.checked); if (!e.target.checked) stopSpeaking(); }}
                 style={{ accentColor: "#3f51b5" }}
               />
-              🔊 Voice replies
+              🔊
             </label>
           </div>
+
+          {(isListening || micError) && (
+            <div style={{ fontSize: "0.78rem", paddingLeft: 2 }}>
+              {isListening ? (
+                <span style={{ color: "#f44336", display: "flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#f44336", display: "inline-block", animation: "pulse 1s infinite" }} />
+                  Listening…
+                </span>
+              ) : (
+                <span style={{ color: "#c62828" }}>⚠️ {micError}</span>
+              )}
+            </div>
+          )}
         </footer>
       </div>
     </div>
