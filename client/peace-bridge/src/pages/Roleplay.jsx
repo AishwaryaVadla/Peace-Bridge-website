@@ -363,7 +363,7 @@ export default function Roleplay() {
           {/* Scenario default context */}
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <span style={{ fontWeight: 600, color: "#1a237e" }}>Default scenario</span>
+              <span style={{ fontWeight: 600, color: "#1a237e" }}>📋 Default scenario</span>
               {pendingScenario.difficulty && (
                 <span
                   className="tag"
@@ -384,7 +384,7 @@ export default function Roleplay() {
           {/* Custom context input */}
           <div style={{ marginBottom: 24 }}>
             <label style={{ display: "block", fontWeight: 600, color: "#333", marginBottom: 8 }}>
-              Your specific situation <span style={{ fontWeight: 400, color: "#888" }}>(optional)</span>
+              📝 Your specific situation <span style={{ fontWeight: 400, color: "#888" }}>(optional)</span>
             </label>
             <p className="subtle" style={{ margin: "0 0 10px", fontSize: "0.88rem" }}>
               Describe your real or custom scenario. The AI character will respond to your specific context instead of the default setup.
@@ -451,15 +451,15 @@ export default function Roleplay() {
       <div className="page">
         <div className="pageHeader">
           <div>
-            <h1>Role-Play Practice</h1>
-            <p className="subtle">Practice conflict resolution skills in a safe, guided environment.</p>
+            <h1>🎭 Role-Play Practice</h1>
+            <p className="subtle">🛡️ Practice conflict resolution skills in a safe, guided environment.</p>
           </div>
         </div>
 
         {/* Difficulty filter */}
         <div style={{ marginTop: 24 }}>
           <p style={{ margin: "0 0 10px", color: "#666", fontSize: "0.88rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            Filter by difficulty
+            🎯 Filter by difficulty
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {DIFFICULTIES.map((d) => {
@@ -482,7 +482,7 @@ export default function Roleplay() {
                     textTransform: d === "All" ? "none" : "capitalize",
                   }}
                 >
-                  {d === "All" ? "All scenarios" : d}
+                  {d === "All" ? "🎭 All scenarios" : d === "beginner" ? "🟢 beginner" : d === "intermediate" ? "🟡 intermediate" : "🔴 advanced"}
                 </button>
               );
             })}
@@ -579,7 +579,7 @@ export default function Roleplay() {
                   onClick={() => handleEnd()}
                   disabled={ending}
                 >
-                  {ending ? "Ending…" : "End Session"}
+                  {ending ? "⏳ Ending…" : "🏁 End Session"}
                 </button>
               )}
             </div>
@@ -708,10 +708,10 @@ export default function Roleplay() {
               color: "#333",
             }}>
               {coachingLoading ? (
-                <span style={{ color: "#7986cb" }}>Analyzing your message…</span>
+                <span style={{ color: "#7986cb" }}>🧠 Analyzing your message…</span>
               ) : coaching ? (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px", alignItems: "flex-start" }}>
-                  <span style={{ fontWeight: 600, color: "#3f51b5", marginRight: 4 }}>Coaching:</span>
+                  <span style={{ fontWeight: 600, color: "#3f51b5", marginRight: 4 }}>🧠 Coaching:</span>
                   <span>Tone: <strong>{coaching.tone}</strong></span>
                   <span>Empathy: <strong>{coaching.empathy}</strong></span>
                   <span style={{ flexBasis: "100%", color: "#555", marginTop: 2 }}>💡 {coaching.suggestion}</span>
@@ -734,7 +734,7 @@ export default function Roleplay() {
               flexDirection: "column",
               gap: 6,
             }}>
-              <span style={{ fontWeight: 600 }}>Suggested rewrite:</span>
+              <span style={{ fontWeight: 600 }}>✍️ Suggested rewrite:</span>
               <span style={{ fontStyle: "italic" }}>&ldquo;{rewriteSuggestion}&rdquo;</span>
               <button
                 onClick={() => { setInput(rewriteSuggestion); setRewriteSuggestion(null); inputRef.current?.focus(); }}
@@ -750,7 +750,7 @@ export default function Roleplay() {
                   fontWeight: 600,
                 }}
               >
-                Use this
+                ✅ Use this
               </button>
             </div>
           )}
@@ -812,7 +812,7 @@ export default function Roleplay() {
                 whiteSpace: "nowrap",
               }}
             >
-              {rewriteLoading ? "…" : "Improve"}
+              {rewriteLoading ? "⏳ …" : "✨ Improve"}
             </button>
             <button
               className="send-btn"
@@ -820,7 +820,7 @@ export default function Roleplay() {
               disabled={isTyping || !!crisis || !!debrief}
               aria-label="Send response"
             >
-              Send
+              Send ➤
             </button>
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>

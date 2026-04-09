@@ -393,15 +393,15 @@ export default function Chatbot() {
       <div className="chatcard">
         <header className="chat-header">
           <div>
-            <h3>Peace Bridge — Mediation Assistant</h3>
-            <p className="muted-small">Rule-based conflict guidance </p>
+            <h3>🕊️ Peace Bridge — Mediation Assistant</h3>
+            <p className="muted-small">🤝 AI-guided conflict mediation</p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="send-btn alt" onClick={resetChat} disabled={isSending || isSummarizing}>
-              New Chat
+              🔄 New Chat
             </button>
             <button className="send-btn" onClick={summarize} disabled={isSummarizing || messages.length < 2}>
-              {isSummarizing ? "Summarizing..." : "End Session"}
+              {isSummarizing ? "⏳ Summarizing..." : "📋 End Session"}
             </button>
           </div>
         </header>
@@ -466,7 +466,7 @@ export default function Chatbot() {
 
         {summary && (
           <div className="card" style={{ marginTop: 16 }}>
-            <h3>Session Summary</h3>
+            <h3>📋 Session Summary</h3>
             <p style={{ whiteSpace: "pre-wrap", marginTop: 8 }}>{summary}</p>
           </div>
         )}
@@ -484,7 +484,7 @@ export default function Chatbot() {
               ref={inputRef}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Describe your situation..."
+              placeholder="💬 Describe your situation..."
               rows={1}
               className="chat-input"
               aria-label="Type your mediation message"
@@ -516,7 +516,7 @@ export default function Chatbot() {
                 {isListening ? <>⏹ Stop</> : <>🎤</>}
               </button>
             )}
-            <button className="send-btn" onClick={send} disabled={isSending} aria-label="Send message">Send</button>
+            <button className="send-btn" onClick={send} disabled={isSending} aria-label="Send message">Send ➤</button>
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
             {isListening ? (
