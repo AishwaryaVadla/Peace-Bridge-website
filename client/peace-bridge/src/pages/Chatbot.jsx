@@ -153,7 +153,6 @@ export default function Chatbot() {
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [summary, setSummary] = useState("");
   const [summaryError, setSummaryError] = useState("");
-  const [autoSummarized, setAutoSummarized] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -213,7 +212,6 @@ export default function Chatbot() {
     setInput("");
     setSummary("");
     setSummaryError("");
-    setAutoSummarized(false);
     setSessionId(null);
   };
 
@@ -372,14 +370,6 @@ export default function Chatbot() {
     }
   };
 
-  useEffect(() => {
-    const userCount = messages.filter((m) => m.sender === "user").length;
-    if (userCount >= 8 && !autoSummarized && !summary && !isSummarizing) {
-      setAutoSummarized(true);
-      summarize();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages]);
 
   const onKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
