@@ -255,39 +255,46 @@ async function runDebrief(sessionId, scenarioTitle, memory) {
     .map((m) => `${m.role === "user" ? "Learner" : "Character"}: ${m.content}`)
     .join("\n");
 
-  const prompt = `You are a conflict-resolution coach reviewing a roleplay practice session.
-Scenario: "${scenarioTitle}"${memoryContext}
+  const userPrompt = `Scenario: "${scenarioTitle}"${memoryContext}
 
 Recent transcript:
 ${transcript}
 
-Return ONLY valid JSON, no markdown:
-{
-  "well_done": "one specific thing the learner did well (1–2 sentences)",
-  "improve": "one specific area to improve (1 sentence)",
-  "tip": "one concrete technique for next time (1 sentence)",
-  "next_step": "one actionable opening phrase they can use, e.g. \\"Try starting with: I understand your concern about…\\""
-}`;
+Evaluate the learner above. Respond ONLY with this JSON — no extra text:
+{"well_done":"...","improve":"...","tip":"...","next_step":"..."}`;
 
   try {
     const raw = await chatComplete(
-      [{ role: "user", content: prompt }],
-      { temperature: 0.5, num_predict: 300 }
+      [
+        { role: "system", content: "You are a conflict-resolution coach. You respond ONLY with valid JSON. No markdown, no explanation, no extra text." },
+        { role: "user", content: userPrompt },
+      ],
+      { temperature: 0.4, num_predict: 500, max_tokens: 600 }
     );
     const match = raw.match(/\{[\s\S]*\}/);
-    if (match) {
-      const parsed = JSON.parse(match[0]);
-      return parsed;
-    }
-    // Fallback: return raw text in well_done field
-    return { well_done: raw, improve: "", tip: "", next_step: "" };
+    let parsed = null;
+    try { parsed = match ? JSON.parse(match[0]) : null; } catch { parsed = null; }
+
+    if (parsed && parsed.well_done) return parsed;
+    // LLM returned plain text — put it in well_done
+    return { well_done: raw || "Good effort in this session.", improve: "", tip: "", next_step: "" };
   } catch (ollamaErr) {
-    console.error("runDebrief Ollama error:", ollamaErr?.message);
-    return { well_done: "Unable to generate debrief at this time.", improve: "", tip: "", next_step: "" };
+    console.error("runDebrief LLM error:", ollamaErr?.message);
+    return {
+      well_done: "You completed the roleplay session.",
+      improve: "Could not generate full feedback — the AI timed out.",
+      tip: "Try ending sessions sooner to get faster feedback.",
+      next_step: "Review the conversation and reflect on your approach.",
+    };
   }
   } catch (outerErr) {
     console.error("runDebrief outer error:", outerErr?.message);
-    return { well_done: "Unable to generate debrief at this time.", improve: "", tip: "", next_step: "" };
+    return {
+      well_done: "You completed the roleplay session.",
+      improve: "Could not generate full feedback.",
+      tip: "",
+      next_step: "",
+    };
   }
 }
 

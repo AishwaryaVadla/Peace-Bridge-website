@@ -269,34 +269,59 @@ router.post("/end", async (req, res) => {
       return `${label}: ${m.content}`;
     }).join("\n");
 
-    const prompt = `You are a conflict-resolution expert evaluating a student's performance as a mediator.
+    const userPrompt = `Dispute: ${mem.dispute_type || "Conflict"}
+${mem.dispute_summary ? `Context: ${mem.dispute_summary}` : ""}
 
-Dispute: ${mem.dispute_type || "Conflict"}
-${mem.dispute_summary ? `Summary: ${mem.dispute_summary}` : ""}
+Transcript (last 24 turns):
+${transcript || "(no transcript available)"}
 
-Transcript:
-${transcript}
-
-Evaluate the mediator's performance and return ONLY valid JSON, no markdown:
-{
-  "well_done": "one specific strength of their mediation approach (1-2 sentences)",
-  "improve": "one specific area for improvement (1 sentence)",
-  "tip": "one concrete mediation technique to try next time (1 sentence)",
-  "next_step": "one example phrase they could use to move the session forward"
-}`;
+Evaluate the mediator above. Respond ONLY with this JSON object — no extra text:
+{"well_done":"...","improve":"...","tip":"...","next_step":"..."}`;
 
     try {
-      const raw = await chatComplete([{ role: "user", content: prompt }], { temperature: 0.5, num_predict: 300 });
+      const raw = await chatComplete(
+        [
+          { role: "system", content: "You are a conflict-resolution expert. You respond ONLY with valid JSON. No markdown, no explanation, no extra text." },
+          { role: "user", content: userPrompt },
+        ],
+        { temperature: 0.4, num_predict: 500, max_tokens: 600 }
+      );
       const match = raw.match(/\{[\s\S]*\}/);
-      const debrief = match ? JSON.parse(match[0]) : { well_done: raw, improve: "", tip: "", next_step: "" };
+      let debrief;
+      try {
+        debrief = match ? JSON.parse(match[0]) : null;
+      } catch { debrief = null; }
+
+      if (!debrief || !debrief.well_done) {
+        // LLM returned plain text — wrap it
+        debrief = { well_done: raw || "Good effort as mediator.", improve: "", tip: "", next_step: "" };
+      }
+
       await supabase.from("sessions").update({ ended_at: new Date().toISOString() }).eq("id", session_id).catch(() => {});
       return res.json({ session_id, debrief });
-    } catch {
-      return res.json({ session_id, debrief: { well_done: "Session complete.", improve: "", tip: "", next_step: "" } });
+    } catch (llmErr) {
+      console.error("/mediator/end LLM error:", llmErr);
+      return res.json({
+        session_id,
+        debrief: {
+          well_done: "You completed the mediation session.",
+          improve: "Could not generate full feedback — the AI timed out.",
+          tip: "Try ending sessions sooner to get faster feedback.",
+          next_step: "Review the conversation above and reflect on your approach.",
+        },
+      });
     }
   } catch (err) {
     console.error("/mediator/end error:", err);
-    return res.json({ session_id: req.body?.session_id, debrief: { well_done: "Session complete.", improve: "", tip: "", next_step: "" } });
+    return res.json({
+      session_id: req.body?.session_id,
+      debrief: {
+        well_done: "You completed the mediation session.",
+        improve: "Could not generate full feedback.",
+        tip: "",
+        next_step: "",
+      },
+    });
   }
 });
 
