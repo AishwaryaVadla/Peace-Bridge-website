@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import "../components/Chatbot.css";
 import { detectEmotion } from "../utils/ruleEngine";
 import { sendChat, sendSessionSummary } from "../utils/chatbotAPI";
+import { generateOutcome } from "../utils/outcomeAPI";
 
 
 // ── Voice helpers ─────────────────────────────────────────────────────────────
@@ -154,6 +155,8 @@ export default function Chatbot() {
   const [summary, setSummary] = useState("");
   const [summaryError, setSummaryError] = useState("");
   const [sessionId, setSessionId] = useState(null);
+  const [outcome, setOutcome] = useState(null);
+  const [outcomeLoading, setOutcomeLoading] = useState(false);
   const [slowResponse, setSlowResponse] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -214,6 +217,7 @@ export default function Chatbot() {
     setSummary("");
     setSummaryError("");
     setSessionId(null);
+    setOutcome(null);
   };
 
   useEffect(() => {
@@ -362,6 +366,7 @@ export default function Chatbot() {
     if (isSummarizing) return;
     setSummaryError("");
     setIsSummarizing(true);
+    setOutcome(null);
     try {
       const historyForApi = messages.map((m) => ({
         role: m.sender === "user" ? "user" : "assistant",
@@ -369,6 +374,14 @@ export default function Chatbot() {
       }));
       const data = await sendSessionSummary(historyForApi, sessionId);
       setSummary(data.summary);
+      // Fire outcome generator in parallel if we have a session
+      if (sessionId) {
+        setOutcomeLoading(true);
+        generateOutcome(sessionId, "chatbot")
+          .then((d) => setOutcome(d.outcome))
+          .catch(() => {}) // non-blocking — don't surface outcome errors
+          .finally(() => setOutcomeLoading(false));
+      }
     } catch (e) {
       setSummaryError(e.message || "Could not generate summary");
     } finally {
@@ -477,6 +490,55 @@ export default function Chatbot() {
         {summaryError && (
           <div className="alert" style={{ marginTop: 12 }}>
             {summaryError}
+          </div>
+        )}
+
+        {outcomeLoading && (
+          <div className="card" style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10, color: "#3f51b5" }}>
+            <div style={{ display: "inline-flex", gap: 5 }}>
+              {[0, 0.15, 0.3].map((d, i) => (
+                <span key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: "#5c6bc0", display: "inline-block", animation: "blink 1s infinite", animationDelay: `${d}s` }} />
+              ))}
+            </div>
+            <span style={{ fontSize: "0.9rem", fontWeight: 500 }}>Generating conflict outcome…</span>
+          </div>
+        )}
+
+        {outcome && (
+          <div className="card" style={{ marginTop: 12 }}>
+            <h3 style={{ marginBottom: 14 }}>🧾 Conflict Outcome</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {outcome.summary && (
+                <div style={{ background: "#f0f3ff", border: "1px solid #c5cae9", borderRadius: 8, padding: "10px 14px" }}>
+                  <span style={{ fontWeight: 700, display: "block", marginBottom: 4, color: "#3f51b5" }}>📋 Summary</span>
+                  <span style={{ fontSize: "0.92rem", color: "#333" }}>{outcome.summary}</span>
+                </div>
+              )}
+              {outcome.perspective_a && (
+                <div style={{ background: "#e8eaf6", border: "1px solid #c5cae9", borderRadius: 8, padding: "10px 14px" }}>
+                  <span style={{ fontWeight: 700, display: "block", marginBottom: 4, color: "#3f51b5" }}>🙋 Your Perspective</span>
+                  <span style={{ fontSize: "0.92rem", color: "#333" }}>{outcome.perspective_a}</span>
+                </div>
+              )}
+              {outcome.perspective_b && (
+                <div style={{ background: "#fff3e0", border: "1px solid #ffe0b2", borderRadius: 8, padding: "10px 14px" }}>
+                  <span style={{ fontWeight: 700, display: "block", marginBottom: 4, color: "#e65100" }}>🙋 Other Party's Perspective</span>
+                  <span style={{ fontSize: "0.92rem", color: "#333" }}>{outcome.perspective_b}</span>
+                </div>
+              )}
+              {outcome.resolution && (
+                <div style={{ background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 8, padding: "10px 14px" }}>
+                  <span style={{ fontWeight: 700, display: "block", marginBottom: 4, color: "#2e7d32" }}>⚖️ Suggested Resolution</span>
+                  <span style={{ fontSize: "0.92rem", color: "#333" }}>{outcome.resolution}</span>
+                </div>
+              )}
+              {outcome.next_step && (
+                <div style={{ background: "#f3e5f5", border: "1px solid #ce93d8", borderRadius: 8, padding: "10px 14px" }}>
+                  <span style={{ fontWeight: 700, display: "block", marginBottom: 4, color: "#6a1b9a" }}>🚀 Next Step</span>
+                  <span style={{ fontSize: "0.92rem", color: "#333" }}>{outcome.next_step}</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
