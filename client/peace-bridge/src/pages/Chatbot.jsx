@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import "../components/Chatbot.css";
 import { detectEmotion } from "../utils/ruleEngine";
 import { sendChat, sendSessionSummary } from "../utils/chatbotAPI";
@@ -157,6 +159,7 @@ export default function Chatbot() {
   const [sessionId, setSessionId] = useState(null);
   const [outcome, setOutcome] = useState(null);
   const [outcomeLoading, setOutcomeLoading] = useState(false);
+  const [outcomeError, setOutcomeError] = useState("");
   const [slowResponse, setSlowResponse] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -218,6 +221,7 @@ export default function Chatbot() {
     setSummaryError("");
     setSessionId(null);
     setOutcome(null);
+    setOutcomeError("");
   };
 
   useEffect(() => {
@@ -377,9 +381,10 @@ export default function Chatbot() {
       // Fire outcome generator in parallel if we have a session
       if (sessionId) {
         setOutcomeLoading(true);
+        setOutcomeError("");
         generateOutcome(sessionId, "chatbot")
           .then((d) => setOutcome(d.outcome))
-          .catch(() => {}) // non-blocking — don't surface outcome errors
+          .catch((e) => setOutcomeError(e.message || "Could not generate conflict outcome."))
           .finally(() => setOutcomeLoading(false));
       }
     } catch (e) {
@@ -483,7 +488,9 @@ export default function Chatbot() {
         {summary && (
           <div className="card" style={{ marginTop: 16 }}>
             <h3>📋 Session Summary</h3>
-            <p style={{ whiteSpace: "pre-wrap", marginTop: 8 }}>{summary}</p>
+            <div style={{ marginTop: 8, lineHeight: 1.7, fontSize: "0.93rem" }}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{summary}</ReactMarkdown>
+            </div>
           </div>
         )}
 
@@ -491,6 +498,10 @@ export default function Chatbot() {
           <div className="alert" style={{ marginTop: 12 }}>
             {summaryError}
           </div>
+        )}
+
+        {outcomeError && (
+          <div className="alert" style={{ marginTop: 12 }}>⚠️ Conflict outcome: {outcomeError}</div>
         )}
 
         {outcomeLoading && (
