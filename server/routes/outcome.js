@@ -19,21 +19,33 @@ No extra text outside the JSON.`;
 
 router.post("/", async (req, res) => {
   try {
-    const { session_id, mode = "chatbot" } = req.body;
+    const { session_id, messages: inlineMsgs, mode = "chatbot" } = req.body;
 
-    if (!session_id) {
-      return res.status(400).json({ error: "session_id is required" });
+    if (!session_id && (!inlineMsgs || inlineMsgs.length === 0)) {
+      return res.status(400).json({ error: "Provide session_id or messages" });
     }
 
-    // Fetch messages from Supabase
-    const { data: msgs, error: dbErr } = await supabase
-      .from("session_messages")
-      .select("role, content")
-      .eq("session_id", session_id)
-      .order("created_at", { ascending: true });
+    let msgs = [];
 
-    if (dbErr) return res.status(500).json({ error: dbErr.message });
-    if (!msgs || msgs.length === 0) {
+    // Prefer DB fetch; fall back to inline messages passed from frontend
+    if (session_id) {
+      const { data, error: dbErr } = await supabase
+        .from("session_messages")
+        .select("role, content")
+        .eq("session_id", session_id)
+        .order("created_at", { ascending: true });
+
+      if (!dbErr && data && data.length > 0) {
+        msgs = data;
+      }
+    }
+
+    // Fallback: use inline messages if DB returned nothing
+    if (msgs.length === 0 && inlineMsgs && inlineMsgs.length > 0) {
+      msgs = inlineMsgs; // expected shape: [{ role, content }]
+    }
+
+    if (msgs.length === 0) {
       return res.status(400).json({ error: "No messages found for this session" });
     }
 

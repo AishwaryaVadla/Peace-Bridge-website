@@ -378,15 +378,17 @@ export default function Chatbot() {
       }));
       const data = await sendSessionSummary(historyForApi, sessionId);
       setSummary(data.summary);
-      // Fire outcome generator in parallel if we have a session
-      if (sessionId) {
-        setOutcomeLoading(true);
-        setOutcomeError("");
-        generateOutcome(sessionId, "chatbot")
-          .then((d) => setOutcome(d.outcome))
-          .catch((e) => setOutcomeError(e.message || "Could not generate conflict outcome."))
-          .finally(() => setOutcomeLoading(false));
-      }
+      // Fire outcome generator — pass inline messages as fallback if DB returns nothing
+      setOutcomeLoading(true);
+      setOutcomeError("");
+      const fallback = messages.map((m) => ({
+        role: m.sender === "user" ? "user" : "assistant",
+        content: m.text,
+      }));
+      generateOutcome(sessionId, "chatbot", fallback)
+        .then((d) => setOutcome(d.outcome))
+        .catch((e) => setOutcomeError(e.message || "Could not generate conflict outcome."))
+        .finally(() => setOutcomeLoading(false));
     } catch (e) {
       setSummaryError(e.message || "Could not generate summary");
     } finally {
@@ -501,7 +503,23 @@ export default function Chatbot() {
         )}
 
         {outcomeError && (
-          <div className="alert" style={{ marginTop: 12 }}>⚠️ Conflict outcome: {outcomeError}</div>
+          <div className="alert" style={{ marginTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+            <span>⚠️ Conflict outcome: {outcomeError}</span>
+            <button
+              onClick={() => {
+                setOutcomeError("");
+                setOutcomeLoading(true);
+                const fallback = messages.map((m) => ({ role: m.sender === "user" ? "user" : "assistant", content: m.text }));
+                generateOutcome(sessionId, "chatbot", fallback)
+                  .then((d) => setOutcome(d.outcome))
+                  .catch((e) => setOutcomeError(e.message || "Could not generate conflict outcome."))
+                  .finally(() => setOutcomeLoading(false));
+              }}
+              style={{ background: "transparent", border: "1px solid #c8a400", borderRadius: 6, padding: "3px 10px", cursor: "pointer", fontSize: "0.82rem", fontWeight: 600, color: "#7a6000" }}
+            >
+              🔄 Retry
+            </button>
+          </div>
         )}
 
         {outcomeLoading && (

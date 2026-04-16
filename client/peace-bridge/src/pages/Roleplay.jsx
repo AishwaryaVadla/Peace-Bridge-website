@@ -322,14 +322,16 @@ export default function Roleplay() {
     try {
       const data = await endRoleplay(sid);
       setDebrief(data.debrief);
-      // Fire outcome in parallel — non-blocking
-      if (sid) {
-        setOutcomeLoading(true);
-        generateOutcome(sid, "roleplay")
-          .then((d) => setOutcome(d.outcome))
-          .catch(() => {})
-          .finally(() => setOutcomeLoading(false));
-      }
+      // Fire outcome in parallel — pass inline messages as fallback if DB returns nothing
+      setOutcomeLoading(true);
+      const fallback = messages.map((m) => ({
+        role: m.sender === "user" ? "user" : "assistant",
+        content: m.text,
+      }));
+      generateOutcome(sid || null, "roleplay", fallback)
+        .then((d) => setOutcome(d.outcome))
+        .catch(() => {})
+        .finally(() => setOutcomeLoading(false));
     } catch (e) {
       setDebriefError(`Debrief failed: ${e.message}`);
     } finally {
