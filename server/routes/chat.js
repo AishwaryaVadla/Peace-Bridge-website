@@ -502,6 +502,25 @@ router.post("/", async (req, res) => {
       emotion.intensity === "high" &&
       ["fear", "sad", "stressed", "angry", "frustrated"].includes(emotion.primary_emotion);
 
+    const PHASE_FOCUS = {
+      venting:      "Making you feel heard before exploring solutions.",
+      clarifying:   "Pinpointing the core issue behind the conflict.",
+      perspective:  "Exploring how the other party might see this situation.",
+      solution:     "Proposing a small, realistic step forward.",
+      action:       "Turning insight into a concrete action you can take today.",
+      crisis:       "Your safety and wellbeing are the priority right now.",
+    };
+
+    const reasoning = {
+      emotion: showEmotion
+        ? `${emotion.primary_emotion}${emotion.intensity ? ` · ${emotion.intensity} intensity` : ""}`
+        : null,
+      focus: PHASE_FOCUS[nextPhase] || null,
+      signals: emotion.secondary_emotions?.length
+        ? `Also picked up: ${emotion.secondary_emotions.slice(0, 2).join(", ")}.`
+        : null,
+    };
+
     return res.json({
       ...DEFAULT_REPLY,
       assistant_message: reply,
@@ -513,6 +532,7 @@ router.post("/", async (req, res) => {
       phrasing_suggestions: phrasingSuggestions,
       suggest_mindfulness: suggestMindfulness,
       session_id: sessionId,
+      reasoning,
     });
   } catch (err) {
     console.error("Chat route error:", err);

@@ -481,7 +481,15 @@ router.post("/", async (req, res) => {
       updateRoleplayMemory(session_id, olderMsgs, memory).catch(() => {});
     }
 
-    return res.json({ session_id, reply, emotional_state: emotionalState, score });
+    const reasoning = {
+      emotion: emotionalState || null,
+      progress: score?.direction
+        ? `${score.direction === "improving" ? "↑" : score.direction === "declining" ? "↓" : "→"} Conflict trajectory is ${score.direction}.`
+        : null,
+      insight: score?.note || null,
+    };
+
+    return res.json({ session_id, reply, emotional_state: emotionalState, score, reasoning });
   } catch (err) {
     console.error("Roleplay continue error:", err);
     return res.status(500).json({ error: "Internal server error" });

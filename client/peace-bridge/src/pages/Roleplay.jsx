@@ -3,6 +3,31 @@ import { useNavigate } from "react-router-dom";
 import { getScenarios, startRoleplay, startCustomRoleplay, sendRoleplay, endRoleplay, getCoaching, rewriteMessage } from "../utils/roleplayAPI";
 import { generateOutcome } from "../utils/outcomeAPI";
 
+// ── Reasoning box ─────────────────────────────────────────────────────────────
+function ReasoningBox({ reasoning }) {
+  const [open, setOpen] = useState(false);
+  if (!reasoning || (!reasoning.emotion && !reasoning.focus && !reasoning.signals && !reasoning.insight && !reasoning.progress)) return null;
+  return (
+    <div style={{ marginTop: 4, maxWidth: 420 }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "0.78rem", color: "#7986cb", display: "flex", alignItems: "center", gap: 5 }}
+      >
+        🧠 Why this response? <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div style={{ marginTop: 5, padding: "8px 12px", background: "#f0f3ff", border: "1px solid #c5cae9", borderRadius: 8, fontSize: "0.8rem", color: "#333", display: "flex", flexDirection: "column", gap: 5 }}>
+          {reasoning.emotion && <span>🎯 <strong>Emotion:</strong> {reasoning.emotion}</span>}
+          {reasoning.focus && <span>🔄 <strong>Current focus:</strong> {reasoning.focus}</span>}
+          {reasoning.signals && <span>📡 <strong>Signals:</strong> {reasoning.signals}</span>}
+          {reasoning.progress && <span>📈 <strong>Progress:</strong> {reasoning.progress}</span>}
+          {reasoning.insight && <span>💡 <strong>Insight:</strong> {reasoning.insight}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Voice helpers ─────────────────────────────────────────────────────────────
 const SpeechRecognitionAPI =
   typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -291,7 +316,7 @@ export default function Roleplay() {
       const turnScore = data.score || null;
       setMessages((prev) => [
         ...prev,
-        { sender: "bot", text: botText, score: turnScore },
+        { sender: "bot", text: botText, score: turnScore, reasoning: data.reasoning || null },
       ]);
       if (turnScore?.scores) setScoreHistory((prev) => [...prev, turnScore]);
       if (voiceEnabled && botText) speak(botText);
