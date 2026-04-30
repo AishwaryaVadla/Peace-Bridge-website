@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { getScenarios, startRoleplay, startCustomRoleplay, sendRoleplay, endRoleplay, getCoaching, rewriteMessage } from "../utils/roleplayAPI";
 import { generateOutcome } from "../utils/outcomeAPI";
+import { getOrCreateUserId } from "../utils/progressAPI";
 
 // ── Reasoning box ─────────────────────────────────────────────────────────────
 function ReasoningBox({ reasoning }) {
@@ -394,7 +395,7 @@ export default function Roleplay() {
     setDebriefError("");
     setOutcome(null);
     try {
-      const data = await endRoleplay(sid);
+      const data = await endRoleplay(sid, getOrCreateUserId());
       setDebrief(data.debrief);
       // Fire outcome in parallel — pass inline messages as fallback if DB returns nothing
       setOutcomeLoading(true);
@@ -950,6 +951,15 @@ export default function Roleplay() {
                   <div style={{ marginTop: 16 }}>
                     <p style={{ margin: "0 0 6px", fontWeight: 600, fontSize: "0.88rem", color: "#1b5e20" }}>🧠 Your Conflict Style This Session</p>
                     <StyleBadge style={conflictStyle.style} confidence={conflictStyle.confidence} reason={conflictStyle.reason} />
+                  </div>
+                )}
+                {debrief && (
+                  <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #a5d6a7" }}>
+                    <Link to="/progress" style={{ textDecoration: "none" }}>
+                      <button style={{ background: "#e8f5e9", color: "#1b5e20", border: "1px solid #81c784", borderRadius: 8, padding: "8px 18px", cursor: "pointer", fontWeight: 600, fontSize: "0.9rem" }}>
+                        📈 View Your Progress →
+                      </button>
+                    </Link>
                   </div>
                 )}
               </div>

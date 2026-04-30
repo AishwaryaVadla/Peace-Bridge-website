@@ -309,6 +309,44 @@ Evaluate the learner above. Respond ONLY with this JSON — no extra text:
   }
 }
 
+// ── Practice session saver ────────────────────────────────────────────────────
+
+async function savePracticeSession(userId, sessionId, scenarioTitle, trajectory) {
+  if (!userId || !trajectory?.length) return;
+
+  const avg = (key) => {
+    const vals = trajectory.map((t) => t?.scores?.[key] || 0).filter((v) => v > 0);
+    return vals.length ? +(vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(2) : 0;
+  };
+
+  let dominantStyle = null;
+  try {
+    const { data: styles } = await supabase
+      .from("user_styles")
+      .select("style")
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    if (styles?.length) {
+      const counts = {};
+      for (const r of styles) counts[r.style] = (counts[r.style] || 0) + 1;
+      dominantStyle = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+    }
+  } catch { /* non-fatal */ }
+
+  await supabase.from("practice_sessions").insert({
+    user_id: userId,
+    session_id: sessionId,
+    scenario_title: scenarioTitle,
+    avg_empathy: avg("empathy"),
+    avg_clarity: avg("clarity"),
+    avg_assertiveness: avg("assertiveness"),
+    avg_de_escalation: avg("de_escalation"),
+    dominant_style: dominantStyle,
+    total_turns: trajectory.length,
+  });
+}
+
 // ── Conflict style detection ──────────────────────────────────────────────────
 
 async function detectConflictStyle(userText, sessionId) {
@@ -600,7 +638,7 @@ router.post("/rewrite", async (req, res) => {
 // POST /api/roleplay/end  (debrief)
 router.post("/end", async (req, res) => {
   try {
-    const { session_id } = req.body || {};
+    const { session_id, user_id } = req.body || {};
     if (!session_id) return res.status(400).json({ error: "session_id is required" });
 
     // Use select("*") so missing optional columns (roleplay_memory etc.) don't cause errors
@@ -625,8 +663,13 @@ router.post("/end", async (req, res) => {
     // runDebrief catches all its own errors — always returns a structured object
     const debrief = await runDebrief(session_id, scenarioTitle, session?.roleplay_memory ?? null);
 
-    // Fire-and-forget: mark session ended (column may not exist yet)
-    (async () => { try { await supabase.from("sessions").update({ ended_at: new Date().toISOString() }).eq("id", session_id); } catch {} })();
+    // Fire-and-forget: save practice session + mark ended
+    (async () => {
+      try { await supabase.from("sessions").update({ ended_at: new Date().toISOString() }).eq("id", session_id); } catch {}
+      if (user_id && session?.conflict_trajectory?.length) {
+        savePracticeSession(user_id, session_id, scenarioTitle, session.conflict_trajectory).catch(() => {});
+      }
+    })();
 
     return res.json({ session_id, debrief });
   } catch (err) {

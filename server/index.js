@@ -11,6 +11,7 @@ import scenariosRouter from "./routes/scenarios.js";
 import journalRouter from "./routes/journal.js";
 import mediatorRouter from "./routes/mediator.js";
 import outcomeRouter from "./routes/outcome.js";
+import progressRouter from "./routes/progress.js";
 
 dotenv.config();
 
@@ -42,6 +43,7 @@ app.use("/api/scenarios", scenariosRouter);
 app.use("/api/journal", journalRouter);
 app.use("/api/mediator", mediatorRouter);
 app.use("/api/outcome", outcomeRouter);
+app.use("/api/progress", progressRouter);
 
 // Catch-all: serve frontend for non-API routes
 app.get("/*path", (req, res) => {

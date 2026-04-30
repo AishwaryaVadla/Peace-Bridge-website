@@ -43,11 +43,11 @@ export async function sendRoleplay(message, sessionId) {
   return res.json();
 }
 
-export async function endRoleplay(sessionId) {
+export async function endRoleplay(sessionId, userId = null) {
   const res = await fetch(`${API_BASE}/api/roleplay/end`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ session_id: sessionId }),
+    body: JSON.stringify({ session_id: sessionId, user_id: userId }),
   });
   if (!res.ok) {
     let detail = "";

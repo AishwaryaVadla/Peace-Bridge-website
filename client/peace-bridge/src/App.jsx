@@ -11,6 +11,7 @@ import BlogNew from "./pages/BlogNew";
 import BlogEdit from "./pages/BlogEdit";
 import Roleplay from "./pages/Roleplay";
 import MediatorMode from "./pages/MediatorMode";
+import Progress from "./pages/Progress";
 import Mindfulness from "./pages/Mindfulness";
 import Footer from './components/Footer';
 import AIDisclaimer from './components/AIDisclaimer';
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="/chatbot" element={<Chatbot />} />
         <Route path="/roleplay" element={<Roleplay />} />
         <Route path="/mediator" element={<MediatorMode />} />
+        <Route path="/progress" element={<Progress />} />
         <Route path="/teaching" element={<TeachingSection />} />
         <Route path="/journal" element={<ReflectionJournal />} />
         <Route path="/mindfulness" element={<Mindfulness />} />
