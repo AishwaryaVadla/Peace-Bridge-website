@@ -6,6 +6,8 @@ import "../components/Chatbot.css";
 import { detectEmotion } from "../utils/ruleEngine";
 import { sendChat, sendSessionSummary } from "../utils/chatbotAPI";
 import { generateOutcome } from "../utils/outcomeAPI";
+import { generateActions } from "../utils/actionsAPI";
+import { getOrCreateUserId } from "../utils/progressAPI";
 
 
 // ── Reasoning box ─────────────────────────────────────────────────────────────
@@ -69,6 +71,36 @@ function StyleBadge({ style, confidence, reason }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Inline action list ────────────────────────────────────────────────────────
+function ActionList({ actions, loading }) {
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#558b2f", fontSize: "0.85rem", marginTop: 12 }}>
+        <span style={{ animation: "blink 1s infinite", display: "inline-block" }}>⏳</span>
+        Generating your action plan…
+      </div>
+    );
+  }
+  if (!actions?.length) return null;
+  return (
+    <div style={{ marginTop: 14, padding: "14px 16px", background: "#f9fbe7", border: "1px solid #c5e1a5", borderRadius: 8 }}>
+      <p style={{ margin: "0 0 10px", fontWeight: 600, color: "#33691e", fontSize: "0.9rem" }}>✅ Your Action Plan</p>
+      <ol style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 7 }}>
+        {actions.map((a, i) => (
+          <li key={i} style={{ fontSize: "0.9rem", color: "#444", lineHeight: 1.5 }}>
+            {typeof a === "string" ? a : a.text}
+          </li>
+        ))}
+      </ol>
+      <Link to="/actions" style={{ textDecoration: "none" }}>
+        <button style={{ marginTop: 12, background: "none", border: "1px solid #7cb342", borderRadius: 6, padding: "5px 14px", color: "#33691e", cursor: "pointer", fontSize: "0.82rem", fontWeight: 600 }}>
+          📋 Track on Action Board →
+        </button>
+      </Link>
     </div>
   );
 }
@@ -226,6 +258,8 @@ export default function Chatbot() {
   const [outcomeLoading, setOutcomeLoading] = useState(false);
   const [outcomeError, setOutcomeError] = useState("");
   const [conflictStyle, setConflictStyle] = useState(null);
+  const [actions, setActions] = useState([]);
+  const [actionsLoading, setActionsLoading] = useState(false);
   const [slowResponse, setSlowResponse] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -289,6 +323,8 @@ export default function Chatbot() {
     setOutcome(null);
     setOutcomeError("");
     setConflictStyle(null);
+    setActions([]);
+    setActionsLoading(false);
   };
 
   useEffect(() => {
@@ -447,17 +483,22 @@ export default function Chatbot() {
       }));
       const data = await sendSessionSummary(historyForApi, sessionId);
       setSummary(data.summary);
-      // Fire outcome generator — pass inline messages as fallback if DB returns nothing
-      setOutcomeLoading(true);
-      setOutcomeError("");
       const fallback = messages.map((m) => ({
         role: m.sender === "user" ? "user" : "assistant",
         content: m.text,
       }));
+      // Fire outcome + action generation in parallel (both non-blocking)
+      setOutcomeLoading(true);
+      setOutcomeError("");
       generateOutcome(sessionId, "chatbot", fallback)
         .then((d) => setOutcome(d.outcome))
         .catch((e) => setOutcomeError(e.message || "Could not generate conflict outcome."))
         .finally(() => setOutcomeLoading(false));
+      setActionsLoading(true);
+      generateActions(sessionId, getOrCreateUserId(), fallback)
+        .then((d) => setActions(d.actions || []))
+        .catch(() => {})
+        .finally(() => setActionsLoading(false));
     } catch (e) {
       setSummaryError(e.message || "Could not generate summary");
     } finally {
@@ -569,6 +610,7 @@ export default function Chatbot() {
                 <StyleBadge style={conflictStyle.style} confidence={conflictStyle.confidence} reason={conflictStyle.reason} />
               </div>
             )}
+            <ActionList actions={actions} loading={actionsLoading} />
           </div>
         )}
 

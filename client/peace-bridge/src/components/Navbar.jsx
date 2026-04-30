@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { label: "Chatbot", to: "/chatbot" },
   { label: "Role-Play", to: "/roleplay" },
   { label: "Progress", to: "/progress" },
+  { label: "Actions", to: "/actions" },
   { label: "Teaching", to: "/teaching" },
   { label: "Journal", to: "/journal" },
   { label: "Mindfulness", to: "/mindfulness" },

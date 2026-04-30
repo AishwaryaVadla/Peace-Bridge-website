@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { getScenarios, startRoleplay, startCustomRoleplay, sendRoleplay, endRoleplay, getCoaching, rewriteMessage } from "../utils/roleplayAPI";
 import { generateOutcome } from "../utils/outcomeAPI";
 import { getOrCreateUserId } from "../utils/progressAPI";
+import { generateActions } from "../utils/actionsAPI";
 
 // ── Reasoning box ─────────────────────────────────────────────────────────────
 function ReasoningBox({ reasoning }) {
@@ -65,6 +66,36 @@ function StyleBadge({ style, confidence, reason }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Inline action list ────────────────────────────────────────────────────────
+function ActionList({ actions, loading }) {
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#558b2f", fontSize: "0.85rem", marginTop: 12 }}>
+        <span style={{ animation: "blink 1s infinite", display: "inline-block" }}>⏳</span>
+        Generating your action plan…
+      </div>
+    );
+  }
+  if (!actions?.length) return null;
+  return (
+    <div style={{ marginTop: 14, padding: "14px 16px", background: "#f9fbe7", border: "1px solid #c5e1a5", borderRadius: 8 }}>
+      <p style={{ margin: "0 0 10px", fontWeight: 600, color: "#33691e", fontSize: "0.9rem" }}>✅ 3 Things to Try in Real Life</p>
+      <ol style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 7 }}>
+        {actions.map((a, i) => (
+          <li key={i} style={{ fontSize: "0.9rem", color: "#444", lineHeight: 1.5 }}>
+            {typeof a === "string" ? a : a.text}
+          </li>
+        ))}
+      </ol>
+      <Link to="/actions" style={{ textDecoration: "none" }}>
+        <button style={{ marginTop: 12, background: "none", border: "1px solid #7cb342", borderRadius: 6, padding: "5px 14px", color: "#33691e", cursor: "pointer", fontSize: "0.82rem", fontWeight: 600 }}>
+          📋 Track on Action Board →
+        </button>
+      </Link>
     </div>
   );
 }
@@ -223,6 +254,10 @@ export default function Roleplay() {
 
   // conflict style detection
   const [conflictStyle, setConflictStyle] = useState(null);
+
+  // action plan
+  const [actions, setActions] = useState([]);
+  const [actionsLoading, setActionsLoading] = useState(false);
 
   // rewrite
   const [rewriteLoading, setRewriteLoading] = useState(false);
@@ -397,16 +432,21 @@ export default function Roleplay() {
     try {
       const data = await endRoleplay(sid, getOrCreateUserId());
       setDebrief(data.debrief);
-      // Fire outcome in parallel — pass inline messages as fallback if DB returns nothing
-      setOutcomeLoading(true);
       const fallback = messages.map((m) => ({
         role: m.sender === "user" ? "user" : "assistant",
         content: m.text,
       }));
+      // Fire outcome + action generation in parallel (both non-blocking)
+      setOutcomeLoading(true);
       generateOutcome(sid || null, "roleplay", fallback)
         .then((d) => setOutcome(d.outcome))
         .catch(() => {})
         .finally(() => setOutcomeLoading(false));
+      setActionsLoading(true);
+      generateActions(sid || null, getOrCreateUserId(), fallback)
+        .then((d) => setActions(d.actions || []))
+        .catch(() => {})
+        .finally(() => setActionsLoading(false));
     } catch (e) {
       setDebriefError(`Debrief failed: ${e.message}`);
     } finally {
@@ -442,6 +482,8 @@ export default function Roleplay() {
     setRewriteLoading(false);
     setScoreHistory([]);
     setConflictStyle(null);
+    setActions([]);
+    setActionsLoading(false);
     setCustomMode(false);
     setCustomPrompt("");
   };
@@ -953,11 +995,17 @@ export default function Roleplay() {
                     <StyleBadge style={conflictStyle.style} confidence={conflictStyle.confidence} reason={conflictStyle.reason} />
                   </div>
                 )}
+                <ActionList actions={actions} loading={actionsLoading} />
                 {debrief && (
-                  <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #a5d6a7" }}>
+                  <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #a5d6a7", display: "flex", gap: 10, flexWrap: "wrap" }}>
                     <Link to="/progress" style={{ textDecoration: "none" }}>
                       <button style={{ background: "#e8f5e9", color: "#1b5e20", border: "1px solid #81c784", borderRadius: 8, padding: "8px 18px", cursor: "pointer", fontWeight: 600, fontSize: "0.9rem" }}>
-                        📈 View Your Progress →
+                        📈 View Progress →
+                      </button>
+                    </Link>
+                    <Link to="/actions" style={{ textDecoration: "none" }}>
+                      <button style={{ background: "#f9fbe7", color: "#33691e", border: "1px solid #aed581", borderRadius: 8, padding: "8px 18px", cursor: "pointer", fontWeight: 600, fontSize: "0.9rem" }}>
+                        📋 Action Board →
                       </button>
                     </Link>
                   </div>
