@@ -152,6 +152,9 @@ export default function Roleplay() {
   const [coaching, setCoaching] = useState(null);
   const [coachingLoading, setCoachingLoading] = useState(false);
 
+  // score history — one entry per turn
+  const [scoreHistory, setScoreHistory] = useState([]);
+
   // rewrite
   const [rewriteLoading, setRewriteLoading] = useState(false);
   const [rewriteSuggestion, setRewriteSuggestion] = useState(null);
@@ -285,10 +288,12 @@ export default function Roleplay() {
       }
 
       const botText = data.reply;
+      const turnScore = data.score || null;
       setMessages((prev) => [
         ...prev,
-        { sender: "bot", text: botText, score: data.score || null },
+        { sender: "bot", text: botText, score: turnScore },
       ]);
+      if (turnScore?.scores) setScoreHistory((prev) => [...prev, turnScore]);
       if (voiceEnabled && botText) speak(botText);
     } catch {
       setMessages((prev) => [
@@ -365,6 +370,7 @@ export default function Roleplay() {
     setCoachingLoading(false);
     setRewriteSuggestion(null);
     setRewriteLoading(false);
+    setScoreHistory([]);
     setCustomMode(false);
     setCustomPrompt("");
   };
@@ -737,6 +743,35 @@ export default function Roleplay() {
               )}
             </div>
 
+            {scoreHistory.length > 0 && (() => {
+              const avg = (key) =>
+                Math.round(scoreHistory.reduce((s, t) => s + (t?.scores?.[key] || 0), 0) / scoreHistory.length);
+              const dims = [
+                { key: "empathy", icon: "💛" },
+                { key: "clarity", icon: "🧠" },
+                { key: "assertiveness", icon: "💬" },
+                { key: "de_escalation", icon: "🧊" },
+              ];
+              return (
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  {dims.map(({ key, icon }) => {
+                    const val = avg(key);
+                    const color = SCORE_COLOR(val);
+                    return (
+                      <div key={key} title={key} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.78rem" }}>
+                        <span>{icon}</span>
+                        <div style={{ display: "flex", gap: 2 }}>
+                          {[1,2,3,4,5].map(n => (
+                            <div key={n} style={{ width: 8, height: 8, borderRadius: 2, background: n <= val ? color : "#e0e0e0" }} />
+                          ))}
+                        </div>
+                        <span style={{ color, fontWeight: 600 }}>{val}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         </header>
 

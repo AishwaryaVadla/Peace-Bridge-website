@@ -455,9 +455,13 @@ router.post("/", async (req, res) => {
     const context = buildContext(allMsgs || [], memory);
     const systemPrompt = buildRoleplaySystemPrompt(scenario, emotionalState, memory);
 
-    const reply = await chatComplete(
-      [{ role: "system", content: systemPrompt }, ...context, { role: "user", content: userText }]
-    ).catch(() => "I didn't quite catch that — could you say that again?");
+    // Run reply + turn scoring in parallel — both are independent LLM calls
+    const [reply, score] = await Promise.all([
+      chatComplete(
+        [{ role: "system", content: systemPrompt }, ...context, { role: "user", content: userText }]
+      ).catch(() => "I didn't quite catch that — could you say that again?"),
+      scoreConflictTurn(userText, "", turnCount).catch(() => null),
+    ]);
 
     // Persist messages + update turn count
     await Promise.all([
@@ -468,18 +472,16 @@ router.post("/", async (req, res) => {
       ]),
     ]);
 
+    // Store trajectory score (fire-and-forget)
+    if (score) appendTrajectoryScore(session_id, score, trajectory).catch(() => {});
+
     // Trigger structured memory update every N turns (fire-and-forget)
     if (turnCount % MEMORY_UPDATE_INTERVAL === 0 && (allMsgs?.length || 0) > MEMORY_UPDATE_INTERVAL) {
       const olderMsgs = (allMsgs || []).slice(0, -(MEMORY_UPDATE_INTERVAL / 2));
       updateRoleplayMemory(session_id, olderMsgs, memory).catch(() => {});
     }
 
-    // Conflict trajectory scoring — fully fire-and-forget (does not block response)
-    scoreConflictTurn(userText, reply, turnCount)
-      .then((s) => { if (s) appendTrajectoryScore(session_id, s, trajectory).catch(() => {}); })
-      .catch(() => {});
-
-    return res.json({ session_id, reply, emotional_state: emotionalState });
+    return res.json({ session_id, reply, emotional_state: emotionalState, score });
   } catch (err) {
     console.error("Roleplay continue error:", err);
     return res.status(500).json({ error: "Internal server error" });
