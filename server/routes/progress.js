@@ -16,7 +16,13 @@ router.get("/", async (req, res) => {
     .order("created_at", { ascending: true })
     .limit(parseInt(limit, 10));
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) {
+    // Table not created yet — show empty state rather than crashing
+    if (error.code === "42P01" || error.message?.includes("does not exist")) {
+      return res.json([]);
+    }
+    return res.status(500).json({ error: error.message });
+  }
   return res.json(data || []);
 });
 
