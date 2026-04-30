@@ -33,6 +33,46 @@ function ReasoningBox({ reasoning }) {
   );
 }
 
+// ── Conflict style badge ──────────────────────────────────────────────────────
+const STYLE_META = {
+  avoidant:      { color: "#e65100", bg: "#fff3e0", border: "#ffb74d", emoji: "🌊", label: "Avoidant",      desc: "You tend to step back rather than address issues directly.", tips: ["Try expressing your needs earlier in the conversation", "Remember: it's okay — and healthy — to speak up"] },
+  aggressive:    { color: "#c62828", bg: "#fce4ec", border: "#f48fb1", emoji: "⚡", label: "Aggressive",    desc: "You tend to confront conflict with force or blame.", tips: ["Try starting with 'I feel…' instead of 'You always…'", "Pause and breathe before responding"] },
+  passive:       { color: "#283593", bg: "#e8eaf6", border: "#9fa8da", emoji: "🌫️", label: "Passive",       desc: "You tend to suppress your feelings rather than express them.", tips: ["Your needs are valid — state them clearly", "Start small: share one honest feeling at a time"] },
+  collaborative: { color: "#2e7d32", bg: "#e8f5e9", border: "#a5d6a7", emoji: "🤝", label: "Collaborative", desc: "You approach conflict with a calm, solution-focused mindset.", tips: ["Keep building on this strength!", "Invite others to match your collaborative approach"] },
+};
+
+function StyleBadge({ style, confidence, reason }) {
+  const [open, setOpen] = useState(false);
+  if (!style || !STYLE_META[style]) return null;
+  const meta = STYLE_META[style];
+  return (
+    <div style={{ margin: "6px 0", padding: "8px 12px", background: meta.bg, border: `1px solid ${meta.border}`, borderRadius: 8 }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left" }}
+      >
+        <span style={{ fontSize: "0.82rem", color: meta.color }}>
+          {meta.emoji} Communication style: <strong style={{ textTransform: "capitalize" }}>{style}</strong>
+          {confidence && <span style={{ fontWeight: 400, opacity: 0.7 }}> · {confidence} confidence</span>}
+        </span>
+        <span style={{ marginLeft: "auto", fontSize: "0.7rem", color: meta.color, opacity: 0.6 }}>{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${meta.border}`, fontSize: "0.8rem", color: "#444", display: "flex", flexDirection: "column", gap: 6 }}>
+          {reason && <p style={{ margin: 0, fontStyle: "italic", color: "#777" }}>{reason}</p>}
+          <p style={{ margin: 0 }}>{meta.desc}</p>
+          <div>
+            <strong>Try:</strong>
+            <ul style={{ margin: "4px 0 0", paddingLeft: 18, display: "flex", flexDirection: "column", gap: 2 }}>
+              {meta.tips.map((t, i) => <li key={i}>{t}</li>)}
+            </ul>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Voice helpers ─────────────────────────────────────────────────────────────
 const SpeechRecognitionAPI =
   typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -185,6 +225,7 @@ export default function Chatbot() {
   const [outcome, setOutcome] = useState(null);
   const [outcomeLoading, setOutcomeLoading] = useState(false);
   const [outcomeError, setOutcomeError] = useState("");
+  const [conflictStyle, setConflictStyle] = useState(null);
   const [slowResponse, setSlowResponse] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -247,6 +288,7 @@ export default function Chatbot() {
     setSessionId(null);
     setOutcome(null);
     setOutcomeError("");
+    setConflictStyle(null);
   };
 
   useEffect(() => {
@@ -366,6 +408,7 @@ export default function Chatbot() {
             p.map((m) => (m.id === userMsgId ? { ...m, phrasing: data.phrasing_suggestions } : m))
           );
         }
+        if (data.style?.style) setConflictStyle(data.style);
         setMessages((p) => [...p, botMsg]);
         if (voiceEnabled && bubbleText) speak(bubbleText);
         if (data.session_id && data.session_id !== sessionId) {
@@ -520,6 +563,12 @@ export default function Chatbot() {
             <div style={{ marginTop: 8, lineHeight: 1.7, fontSize: "0.93rem" }}>
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{summary}</ReactMarkdown>
             </div>
+            {conflictStyle && (
+              <div style={{ marginTop: 14 }}>
+                <p style={{ margin: "0 0 6px", fontWeight: 600, fontSize: "0.88rem", color: "#555" }}>🧠 Your Conflict Style This Session</p>
+                <StyleBadge style={conflictStyle.style} confidence={conflictStyle.confidence} reason={conflictStyle.reason} />
+              </div>
+            )}
           </div>
         )}
 
@@ -595,6 +644,12 @@ export default function Chatbot() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {conflictStyle && (
+          <div style={{ padding: "0 16px 4px" }}>
+            <StyleBadge style={conflictStyle.style} confidence={conflictStyle.confidence} reason={conflictStyle.reason} />
           </div>
         )}
 

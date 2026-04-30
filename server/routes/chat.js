@@ -28,7 +28,7 @@ const DEFAULT_REPLY = {
   debug_mode: "FALLBACK_USED",
 };
 
-function buildSystemPrompt(phase = "venting", turnCount = 1) {
+function buildSystemPrompt(phase = "venting", turnCount = 1, conflictStyle = null) {
   const phaseGuidance = {
     venting:
       turnCount <= 1
@@ -44,11 +44,22 @@ function buildSystemPrompt(phase = "venting", turnCount = 1) {
       "Help the person commit to one clear next action. Make it specific, simple, and something they can do today.",
   };
 
+  const STYLE_GUIDANCE = {
+    avoidant:      "Personalization: This person tends to avoid direct confrontation. Gently encourage them to express their needs — validate that it’s safe and healthy to speak up.",
+    aggressive:    "Personalization: This person may be communicating forcefully. Model calm, steady de-escalation without dismissing their feelings. Help them slow down.",
+    passive:       "Personalization: This person tends to suppress their true feelings. Help them identify and voice what they actually need. Build their confidence to share.",
+    collaborative: "Personalization: This person is naturally solution-focused. Reinforce this strength and help them channel it productively.",
+  };
+
+  const styleNote = conflictStyle && STYLE_GUIDANCE[conflictStyle]
+    ? `\n\n${STYLE_GUIDANCE[conflictStyle]}`
+    : "";
+
   return `You are PeaceBridge, a compassionate AI mediation companion helping someone work through a real conflict.
 
 Current phase: ${String(phase).toUpperCase()}
 
-Your focus for this response: ${phaseGuidance[phase] || "Stay warm, grounded, and ask one thoughtful question."}
+Your focus for this response: ${phaseGuidance[phase] || "Stay warm, grounded, and ask one thoughtful question."}${styleNote}
 
 Critical rules:
 - NEVER invent or assume emotions the user has not expressed. Only reflect what they actually said.
@@ -260,6 +271,62 @@ async function generateAndStoreSummary(messages, sessionId) {
   }
 }
 
+async function detectConflictStyle(userText, sessionId) {
+  const prompt = `Analyze this person's communication style in a conflict situation.
+
+Message: "${userText}"
+
+Classify into EXACTLY ONE of these styles:
+- avoidant: withdraws, avoids the conflict, deflects
+- aggressive: blames, confronts strongly, uses forceful language
+- passive: suppresses feelings, indirect, doesn't state needs
+- collaborative: calm, solution-focused, constructive
+
+Return ONLY valid JSON, no markdown:
+{"style":"","confidence":"low/medium/high","reason":"one short sentence explaining why"}`;
+
+  try {
+    const raw = await chatComplete(
+      [{ role: "user", content: prompt }],
+      { temperature: 0.3, num_predict: 80 }
+    );
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    const obj = JSON.parse(match[0]);
+    const VALID = ["avoidant", "aggressive", "passive", "collaborative"];
+    if (!VALID.includes(obj.style)) return null;
+    if (sessionId) {
+      supabase.from("user_styles").insert({
+        session_id: sessionId,
+        style: obj.style,
+        confidence: obj.confidence || "medium",
+        reason: obj.reason || "",
+      }).catch(() => {});
+    }
+    return obj;
+  } catch {
+    return null;
+  }
+}
+
+async function getDominantStyle(sessionId) {
+  if (!sessionId) return null;
+  try {
+    const { data } = await supabase
+      .from("user_styles")
+      .select("style")
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    if (!data?.length) return null;
+    const counts = {};
+    for (const r of data) counts[r.style] = (counts[r.style] || 0) + 1;
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+  } catch {
+    return null;
+  }
+}
+
 router.post("/", async (req, res) => {
   await acquireLock();
   try {
@@ -392,20 +459,25 @@ router.post("/", async (req, res) => {
       }
     }
 
+    // Fetch dominant style for personalization (quick DB query, fails silently)
+    const dominantStyle = await getDominantStyle(sessionId).catch(() => null);
+
     // Build chat messages (DB-driven context)
     const chatMessages = [
-      { role: "system", content: buildSystemPrompt(nextPhase, newTurnCount) },
+      { role: "system", content: buildSystemPrompt(nextPhase, newTurnCount, dominantStyle) },
       ...contextMessages,
       { role: "user", content: userText },
     ];
 
     let reply = "";
     let phrasingSuggestions = [];
+    let styleObj = null;
     try {
       const t0 = Date.now();
-      [reply, phrasingSuggestions] = await Promise.all([
+      [reply, phrasingSuggestions, styleObj] = await Promise.all([
         chatComplete(chatMessages, { temperature: 0.8, num_predict: 120 }),
         getPhrasing(userText),
+        detectConflictStyle(userText, sessionId),
       ]);
       console.log("LLM ms:", Date.now() - t0);
     } catch (llmErr) {
@@ -533,6 +605,7 @@ router.post("/", async (req, res) => {
       suggest_mindfulness: suggestMindfulness,
       session_id: sessionId,
       reasoning,
+      style: newTurnCount >= 3 ? styleObj : null,
     });
   } catch (err) {
     console.error("Chat route error:", err);

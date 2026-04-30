@@ -20,7 +20,7 @@ function detectEmotionalState(userText) {
   return "neutral";
 }
 
-function buildRoleplaySystemPrompt(scenario, emotionalState, memory) {
+function buildRoleplaySystemPrompt(scenario, emotionalState, memory, conflictStyle = null) {
   const toneGuidance = {
     escalating: "The user seems frustrated or escalating. Stay in character but slow down slightly, repeat a key concern to show you heard them, and avoid matching their intensity.",
     empathetic: "The user is showing empathy or openness. Respond warmly and begin to show small signs of softening or willingness to talk.",
@@ -41,10 +41,21 @@ function buildRoleplaySystemPrompt(scenario, emotionalState, memory) {
     ? `\nUser's specific situation: "${memory.custom_context}" — keep this in mind throughout.`
     : "";
 
+  const STYLE_COACHING = {
+    avoidant:      "Coaching note: The learner tends to avoid direct confrontation. If they deflect or go quiet, naturally press them to clarify what they want — this creates a realistic consequence of avoidance.",
+    aggressive:    "Coaching note: The learner may be using aggressive language. React authentically — become slightly more defensive if they escalate, to mirror real-world consequences of aggression.",
+    passive:       "Coaching note: The learner may be indirect or vague. If they're not stating their needs clearly, ask them directly what they want — don't let passivity slide without consequence.",
+    collaborative: "Coaching note: The learner is showing collaborative behavior. Gradually soften your character's stance to reward this approach — make progress feel real.",
+  };
+
+  const styleNote = conflictStyle && STYLE_COACHING[conflictStyle]
+    ? `\n\n${STYLE_COACHING[conflictStyle]}`
+    : "";
+
   return `${scenario.system_prompt}${customContextBlock}
 
 Emotional tone guidance (do not break character — use this to inform your delivery):
-${toneGuidance[emotionalState]}${escalationGuidance}
+${toneGuidance[emotionalState]}${escalationGuidance}${styleNote}
 
 Keep your reply to 2–4 sentences. Stay fully in character. Do not summarize or explain — just respond as your character would.`;
 }
@@ -298,6 +309,64 @@ Evaluate the learner above. Respond ONLY with this JSON — no extra text:
   }
 }
 
+// ── Conflict style detection ──────────────────────────────────────────────────
+
+async function detectConflictStyle(userText, sessionId) {
+  const prompt = `Analyze this person's communication style in a conflict situation.
+
+Message: "${userText}"
+
+Classify into EXACTLY ONE of these styles:
+- avoidant: withdraws, avoids the conflict, deflects
+- aggressive: blames, confronts strongly, uses forceful language
+- passive: suppresses feelings, indirect, doesn't state needs
+- collaborative: calm, solution-focused, constructive
+
+Return ONLY valid JSON, no markdown:
+{"style":"","confidence":"low/medium/high","reason":"one short sentence explaining why"}`;
+
+  try {
+    const raw = await chatComplete(
+      [{ role: "user", content: prompt }],
+      { temperature: 0.3, num_predict: 80 }
+    );
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    const obj = JSON.parse(match[0]);
+    const VALID = ["avoidant", "aggressive", "passive", "collaborative"];
+    if (!VALID.includes(obj.style)) return null;
+    if (sessionId) {
+      supabase.from("user_styles").insert({
+        session_id: sessionId,
+        style: obj.style,
+        confidence: obj.confidence || "medium",
+        reason: obj.reason || "",
+      }).catch(() => {});
+    }
+    return obj;
+  } catch {
+    return null;
+  }
+}
+
+async function getDominantStyle(sessionId) {
+  if (!sessionId) return null;
+  try {
+    const { data } = await supabase
+      .from("user_styles")
+      .select("style")
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    if (!data?.length) return null;
+    const counts = {};
+    for (const r of data) counts[r.style] = (counts[r.style] || 0) + 1;
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+  } catch {
+    return null;
+  }
+}
+
 // ── Routes ────────────────────────────────────────────────────────────────────
 
 // POST /api/roleplay/start
@@ -452,15 +521,19 @@ router.post("/", async (req, res) => {
       .eq("session_id", session_id)
       .order("created_at", { ascending: true });
 
-    const context = buildContext(allMsgs || [], memory);
-    const systemPrompt = buildRoleplaySystemPrompt(scenario, emotionalState, memory);
+    // Dominant style for character personalization (quick DB query, fails silently)
+    const dominantStyle = await getDominantStyle(session_id).catch(() => null);
 
-    // Run reply + turn scoring in parallel — both are independent LLM calls
-    const [reply, score] = await Promise.all([
+    const context = buildContext(allMsgs || [], memory);
+    const systemPrompt = buildRoleplaySystemPrompt(scenario, emotionalState, memory, dominantStyle);
+
+    // Run reply + turn scoring + style detection in parallel — all independent LLM calls
+    const [reply, score, styleObj] = await Promise.all([
       chatComplete(
         [{ role: "system", content: systemPrompt }, ...context, { role: "user", content: userText }]
       ).catch(() => "I didn't quite catch that — could you say that again?"),
       scoreConflictTurn(userText, "", turnCount).catch(() => null),
+      detectConflictStyle(userText, session_id).catch(() => null),
     ]);
 
     // Persist messages + update turn count
@@ -489,7 +562,7 @@ router.post("/", async (req, res) => {
       insight: score?.note || null,
     };
 
-    return res.json({ session_id, reply, emotional_state: emotionalState, score, reasoning });
+    return res.json({ session_id, reply, emotional_state: emotionalState, score, reasoning, style: turnCount >= 3 ? styleObj : null });
   } catch (err) {
     console.error("Roleplay continue error:", err);
     return res.status(500).json({ error: "Internal server error" });
